@@ -3,56 +3,71 @@
 <head>
   <title>Z-Draw Chat</title>
   <style>
-    body { font-family: 'Comic Sans MS'; background: #121212; color: white; padding: 20px; text-align: center; }
-    input, button { padding: 10px; border-radius: 8px; margin: 10px; font-size: 1rem; }
-    .chat { margin-top: 20px; background: #333; padding: 20px; border-radius: 12px; max-width: 600px; margin: auto; }
+    body { font-family: 'Segoe UI', sans-serif; background: #111; color: #fff; padding: 20px; text-align: center; }
+    input, button { padding: 10px; margin: 5px; font-size: 16px; border-radius: 10px; border: none; }
+    .chatbox { max-width: 600px; margin: auto; text-align: left; background: #222; padding: 15px; border-radius: 10px; overflow-y: auto; height: 300px; }
   </style>
 </head>
 <body>
-  <h1>🎨 Z-Draw Public Chat</h1>
-  <p>Enter your name to join the chat:</p>
-  <input type="text" id="username" placeholder="Your name...">
-  <button onclick="joinChat()">Join</button>
+  <h1>🎨 Z-Draw Chat</h1>
+  <p>Enter your name:</p>
+  <input type="text" id="nameInput" placeholder="Your name">
+  <button onclick="startChat()">Join</button>
 
-  <div class="chat" id="chat" style="display:none;">
-    <div id="chatBox" style="height:200px; overflow:auto; background:#222; padding:10px; border-radius:8px;"></div>
-    <input type="text" id="message" placeholder="Type a message...">
-    <button onclick="send()">Send</button>
+  <div id="chatArea" style="display:none;">
+    <div class="chatbox" id="chatMessages"></div>
+    <input type="text" id="messageInput" placeholder="Type a message...">
+    <button onclick="sendMessage()">Send</button>
   </div>
 
+  <!-- Firebase scripts -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js"></script>
+
   <script>
-    function joinChat() {
-      const user = document.getElementById('username').value.trim();
-      if (user === '') return alert("Please enter a name!");
-      localStorage.setItem('zdrawUser', user);
-      document.querySelector('input#username').style.display = 'none';
-      document.querySelector('button').style.display = 'none';
-      document.getElementById('chat').style.display = 'block';
-      appendMessage(`You joined as ${user}`);
+    // 🔧 Replace with YOUR Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyALuznXYJR884_6eH4np6LZYxWnvzXB0-sY",
+      authDomain: "zdrawchat.firebaseapp.com",
+      databaseURL: "https://zdrawchat.firebaseio.com",
+      projectId: "zdrawchat",
+      storageBucket: "zdrawchat.firebasestorage.app",
+      messagingSenderId: "50557242324",
+      appId: "1:50557242324:web:d7d22353f413b9d658a441"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let userName = "";
+
+    function startChat() {
+      userName = document.getElementById('nameInput').value.trim();
+      if (userName === "") return alert("Enter your name!");
+      document.getElementById('chatArea').style.display = 'block';
     }
 
-    function send() {
-      const user = localStorage.getItem('zdrawUser');
-      const msg = document.getElementById('message').value.trim();
-      if (msg === '') return;
-      const fullMsg = `${user}: ${msg}`;
-      let all = JSON.parse(localStorage.getItem('zdrawMessages') || '[]');
-      all.push(fullMsg);
-      localStorage.setItem('zdrawMessages', JSON.stringify(all));
-      document.getElementById('message').value = '';
-      appendMessage(fullMsg);
+    function sendMessage() {
+      const msg = document.getElementById('messageInput').value.trim();
+      if (msg === "") return;
+
+      db.ref("zdraw/messages").push({
+        name: userName,
+        text: msg,
+        timestamp: Date.now()
+      });
+
+      document.getElementById('messageInput').value = "";
     }
 
-    function appendMessage(msg) {
-      const box = document.getElementById('chatBox');
-      box.innerHTML += `<div>${msg}</div>`;
-      box.scrollTop = box.scrollHeight;
-    }
-
-    setInterval(() => {
-      let msgs = JSON.parse(localStorage.getItem('zdrawMessages') || '[]');
-      document.getElementById('chatBox').innerHTML = msgs.map(m => `<div>${m}</div>`).join('');
-    }, 1000);
+    db.ref("zdraw/messages").on("child_added", function(snapshot) {
+      const data = snapshot.val();
+      const msgDiv = document.createElement("div");
+      msgDiv.innerText = `${data.name}: ${data.text}`;
+      document.getElementById("chatMessages").appendChild(msgDiv);
+      document.getElementById("chatMessages").scrollTop = document.getElementById("chatMessages").scrollHeight;
+    });
   </script>
 </body>
 </html>
+
