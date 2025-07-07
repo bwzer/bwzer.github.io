@@ -10,9 +10,12 @@
 </head>
 <body>
   <h1>🎨 Z-Draw Chat</h1>
-  <p>Enter your name:</p>
-  <input type="text" id="nameInput" placeholder="Your name">
-  <button onclick="startChat()">Join</button>
+
+  <div id="joinArea">
+    <p>Enter your name:</p>
+    <input type="text" id="nameInput" placeholder="Your name">
+    <button onclick="startChat()">Join</button>
+  </div>
 
   <div id="chatArea" style="display:none;">
     <div class="chatbox" id="chatMessages"></div>
@@ -20,12 +23,11 @@
     <button onclick="sendMessage()">Send</button>
   </div>
 
-  <!-- Firebase scripts -->
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js"></script>
 
   <script>
-    // 🔧 Replace with YOUR Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyALuznXYJR884_6eH4np6LZYxWnvzXB0-s",
       authDomain: "zdrawchat.firebaseapp.com",
@@ -44,7 +46,10 @@
     function startChat() {
       userName = document.getElementById('nameInput').value.trim();
       if (userName === "") return alert("Enter your name!");
+
+      document.getElementById('joinArea').style.display = 'none';
       document.getElementById('chatArea').style.display = 'block';
+      document.getElementById('messageInput').focus();
     }
 
     function sendMessage() {
@@ -60,6 +65,7 @@
       document.getElementById('messageInput').value = "";
     }
 
+    // Realtime Message Listener
     db.ref("zdraw/messages").on("child_added", function(snapshot) {
       const data = snapshot.val();
       const msgDiv = document.createElement("div");
@@ -67,7 +73,19 @@
       document.getElementById("chatMessages").appendChild(msgDiv);
       document.getElementById("chatMessages").scrollTop = document.getElementById("chatMessages").scrollHeight;
     });
+
+    // Press Enter to Send Message
+    document.addEventListener("keydown", function(e) {
+      if (e.key === "Enter") {
+        if (document.getElementById("chatArea").style.display !== "none") {
+          sendMessage();
+        } else {
+          startChat();
+        }
+      }
+    });
   </script>
 </body>
 </html>
+
 
