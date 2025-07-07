@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Z-Draw Chat (DEBUG)</title>
+  <title>Z-Draw Chat (Fixed!)</title>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -30,7 +30,7 @@
   </style>
 </head>
 <body>
-  <h1>🎨 Z-Draw Chat (Debug Mode)</h1>
+  <h1>🎨 Z-Draw Chat (Fixed + Debug)</h1>
 
   <div id="joinArea">
     <p>Enter your name:</p>
@@ -44,9 +44,9 @@
     <button id="sendBtn">Send</button>
   </div>
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js"></script>
+  <!-- ✅ FIXED Firebase Scripts -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
   <script>
     console.log("🌐 Page Loaded...");
@@ -71,48 +71,35 @@
 
       let userName = "";
 
-      // Join button logic
-      const joinBtn = document.getElementById("joinBtn");
-      joinBtn.addEventListener("click", function () {
+      // Join button
+      document.getElementById("joinBtn").addEventListener("click", () => {
         console.log("👆 Join button clicked");
         const input = document.getElementById("nameInput").value.trim();
         if (input === "") {
           alert("Please enter your name!");
-          console.warn("⚠️ No name entered");
           return;
         }
         userName = input;
-        console.log("🧑 User name set:", userName);
         document.getElementById("joinArea").style.display = "none";
         document.getElementById("chatArea").style.display = "block";
         document.getElementById("messageInput").focus();
       });
 
-      // Send button logic
-      const sendBtn = document.getElementById("sendBtn");
-      sendBtn.addEventListener("click", function () {
-        console.log("📨 Send button clicked");
+      // Send message
+      document.getElementById("sendBtn").addEventListener("click", () => {
         const msg = document.getElementById("messageInput").value.trim();
-        if (msg === "") {
-          console.warn("⚠️ Empty message");
-          return;
-        }
-
+        if (msg === "") return;
         db.ref("zdraw/messages").push({
           name: userName,
           text: msg,
           timestamp: Date.now()
         });
-
-        console.log(`✅ Message sent: ${userName}: ${msg}`);
         document.getElementById("messageInput").value = "";
       });
 
-      // Listener for messages
+      // Listen for new messages
       db.ref("zdraw/messages").on("child_added", snapshot => {
         const msg = snapshot.val();
-        console.log("📩 New message received:", msg);
-
         const div = document.createElement("div");
         div.textContent = `${msg.name}: ${msg.text}`;
         document.getElementById("chatMessages").appendChild(div);
@@ -122,3 +109,4 @@
   </script>
 </body>
 </html>
+
