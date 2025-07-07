@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Z-Draw Chat Test</title>
+</head>
+<body>
+  <h1>Join Z-Draw Chat</h1>
+  <input type="text" id="nameInput" placeholder="Your name">
+  <button id="joinBtn">Join</button>
+
+  <script>
+    function startChat() {
+      const name = document.getElementById('nameInput').value.trim();
+      if (!name) {
+        alert("Please enter your name!");
+        return;
+      }
+      alert("Welcome, " + name + "!");
+    }
+
+    // THIS is the important part:
+    document.getElementById('joinBtn').addEventListener('click', startChat);
+  </script>
+</body>
+</html>
