@@ -3,9 +3,30 @@
 <head>
   <title>Z-Draw Chat</title>
   <style>
-    body { font-family: 'Segoe UI', sans-serif; background: #111; color: #fff; padding: 20px; text-align: center; }
-    input, button { padding: 10px; margin: 5px; font-size: 16px; border-radius: 10px; border: none; }
-    .chatbox { max-width: 600px; margin: auto; text-align: left; background: #222; padding: 15px; border-radius: 10px; overflow-y: auto; height: 300px; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #111;
+      color: #fff;
+      text-align: center;
+      padding: 20px;
+    }
+    input, button {
+      padding: 10px;
+      margin: 5px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: none;
+    }
+    .chatbox {
+      max-width: 600px;
+      margin: auto;
+      background: #222;
+      padding: 10px;
+      border-radius: 10px;
+      height: 300px;
+      overflow-y: auto;
+      text-align: left;
+    }
   </style>
 </head>
 <body>
@@ -14,13 +35,13 @@
   <div id="joinArea">
     <p>Enter your name:</p>
     <input type="text" id="nameInput" placeholder="Your name">
-    <button onclick="startChat()">Join</button>
+    <button id="joinBtn">Join</button>
   </div>
 
   <div id="chatArea" style="display:none;">
     <div class="chatbox" id="chatMessages"></div>
     <input type="text" id="messageInput" placeholder="Type a message...">
-    <button onclick="sendMessage()">Send</button>
+    <button id="sendBtn">Send</button>
   </div>
 
   <!-- Firebase -->
@@ -43,46 +64,38 @@
 
     let userName = "";
 
-    function startChat() {
-      userName = document.getElementById('nameInput').value.trim();
-      if (userName === "") return alert("Enter your name!");
-
+    // Join button works now
+    document.getElementById('joinBtn').addEventListener('click', () => {
+      const input = document.getElementById('nameInput').value.trim();
+      if (input === "") {
+        alert("Please enter your name!");
+        return;
+      }
+      userName = input;
       document.getElementById('joinArea').style.display = 'none';
       document.getElementById('chatArea').style.display = 'block';
       document.getElementById('messageInput').focus();
-    }
+    });
 
-    function sendMessage() {
+    // Send message
+    document.getElementById('sendBtn').addEventListener('click', () => {
       const msg = document.getElementById('messageInput').value.trim();
       if (msg === "") return;
-
       db.ref("zdraw/messages").push({
         name: userName,
         text: msg,
         timestamp: Date.now()
       });
-
       document.getElementById('messageInput').value = "";
-    }
-
-    // Realtime Message Listener
-    db.ref("zdraw/messages").on("child_added", function(snapshot) {
-      const data = snapshot.val();
-      const msgDiv = document.createElement("div");
-      msgDiv.innerText = `${data.name}: ${data.text}`;
-      document.getElementById("chatMessages").appendChild(msgDiv);
-      document.getElementById("chatMessages").scrollTop = document.getElementById("chatMessages").scrollHeight;
     });
 
-    // Press Enter to Send Message
-    document.addEventListener("keydown", function(e) {
-      if (e.key === "Enter") {
-        if (document.getElementById("chatArea").style.display !== "none") {
-          sendMessage();
-        } else {
-          startChat();
-        }
-      }
+    // Listen for new messages
+    db.ref("zdraw/messages").on("child_added", snapshot => {
+      const msg = snapshot.val();
+      const div = document.createElement('div');
+      div.textContent = `${msg.name}: ${msg.text}`;
+      document.getElementById('chatMessages').appendChild(div);
+      document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
     });
   </script>
 </body>
