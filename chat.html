@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Z-Draw Chat</title>
+  <style>
+    body { font-family: 'Comic Sans MS'; background: #121212; color: white; padding: 20px; text-align: center; }
+    input, button { padding: 10px; border-radius: 8px; margin: 10px; font-size: 1rem; }
+    .chat { margin-top: 20px; background: #333; padding: 20px; border-radius: 12px; max-width: 600px; margin: auto; }
+  </style>
+</head>
+<body>
+  <h1>🎨 Z-Draw Public Chat</h1>
+  <p>Enter your name to join the chat:</p>
+  <input type="text" id="username" placeholder="Your name...">
+  <button onclick="joinChat()">Join</button>
+
+  <div class="chat" id="chat" style="display:none;">
+    <div id="chatBox" style="height:200px; overflow:auto; background:#222; padding:10px; border-radius:8px;"></div>
+    <input type="text" id="message" placeholder="Type a message...">
+    <button onclick="send()">Send</button>
+  </div>
+
+  <script>
+    function joinChat() {
+      const user = document.getElementById('username').value.trim();
+      if (user === '') return alert("Please enter a name!");
+      localStorage.setItem('zdrawUser', user);
+      document.querySelector('input#username').style.display = 'none';
+      document.querySelector('button').style.display = 'none';
+      document.getElementById('chat').style.display = 'block';
+      appendMessage(`You joined as ${user}`);
+    }
+
+    function send() {
+      const user = localStorage.getItem('zdrawUser');
+      const msg = document.getElementById('message').value.trim();
+      if (msg === '') return;
+      const fullMsg = `${user}: ${msg}`;
+      let all = JSON.parse(localStorage.getItem('zdrawMessages') || '[]');
+      all.push(fullMsg);
+      localStorage.setItem('zdrawMessages', JSON.stringify(all));
+      document.getElementById('message').value = '';
+      appendMessage(fullMsg);
+    }
+
+    function appendMessage(msg) {
+      const box = document.getElementById('chatBox');
+      box.innerHTML += `<div>${msg}</div>`;
+      box.scrollTop = box.scrollHeight;
+    }
+
+    setInterval(() => {
+      let msgs = JSON.parse(localStorage.getItem('zdrawMessages') || '[]');
+      document.getElementById('chatBox').innerHTML = msgs.map(m => `<div>${m}</div>`).join('');
+    }, 1000);
+  </script>
+</body>
+</html>
