@@ -1,20 +1,54 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Z-Draw Server</title>
+  <title>🛠️ Z-Draw Admin Panel</title>
   <style>
-    body { font-family: monospace; background: #000; color: #0f0; padding: 20px; }
-    .console { background: #111; padding: 10px; border: 1px solid #0f0; border-radius: 8px; height: 300px; overflow: auto; }
+    body { background: black; color: lime; font-family: monospace; padding: 20px; }
+    #status { margin-bottom: 10px; }
+    .console { background: #111; padding: 10px; border: 1px solid lime; border-radius: 10px; height: 300px; overflow: auto; }
   </style>
 </head>
 <body>
-  <h1>🛠️ Z-Draw Chat Console</h1>
-  <div class="console" id="console"></div>
+  <h1>🧠 Z-Draw Server Console</h1>
+  <div id="status">Status: <span id="statusLabel">🔴 Offline</span></div>
+  <button onclick="toggleStatus()">Toggle Online/Offline</button>
+  <hr>
+  <div class="console" id="logBox"></div>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js"></script>
+
   <script>
-    setInterval(() => {
-      let msgs = JSON.parse(localStorage.getItem('zdrawMessages') || '[]');
-      document.getElementById('console').innerHTML = msgs.map(m => `<div>📨 ${m}</div>`).join('');
-    }, 1000);
+    // 🔧 Your Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyBEXAMPLEKEY123",
+      authDomain: "zdrawchat.firebaseapp.com",
+      databaseURL: "https://zdrawchat-default-rtdb.firebaseio.com",
+      projectId: "zdrawchat",
+      storageBucket: "zdrawchat.appspot.com",
+      messagingSenderId: "1234567890",
+      appId: "1:1234567890:web:abc123def456"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Toggle status
+    let isOnline = false;
+    function toggleStatus() {
+      isOnline = !isOnline;
+      document.getElementById("statusLabel").innerText = isOnline ? "🟢 Online" : "🔴 Offline";
+    }
+
+    // Live log
+    db.ref("zdraw/messages").on("child_added", function(snapshot) {
+      const data = snapshot.val();
+      const log = document.createElement("div");
+      log.innerText = `${new Date(data.timestamp).toLocaleTimeString()} ${data.name}: ${data.text}`;
+      document.getElementById("logBox").appendChild(log);
+      document.getElementById("logBox").scrollTop = document.getElementById("logBox").scrollHeight;
+    });
   </script>
 </body>
 </html>
