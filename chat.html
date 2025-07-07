@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Z-Draw Chat</title>
+  <title>Z-Draw Chat (DEBUG)</title>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -30,7 +30,7 @@
   </style>
 </head>
 <body>
-  <h1>🎨 Z-Draw Chat</h1>
+  <h1>🎨 Z-Draw Chat (Debug Mode)</h1>
 
   <div id="joinArea">
     <p>Enter your name:</p>
@@ -49,51 +49,75 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js"></script>
 
   <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyALuznXYJR884_6eH4np6LZYxWnvzXB0-s",
-      authDomain: "zdrawchat.firebaseapp.com",
-      databaseURL: "https://zdrawchat-default-rtdb.firebaseio.com", // ✅ This must match your DB URL
-      projectId: "zdrawchat",
-      storageBucket: "zdrawchat.appspot.com", // ✅ Corrected
-      messagingSenderId: "50557242324",
-      appId: "1:50557242324:web:d7d22353f413b9d658a441",
-      measurementId: "G-E81DHMXZWQ"
-    };
+    console.log("🌐 Page Loaded...");
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+    document.addEventListener("DOMContentLoaded", function () {
+      console.log("✅ DOM Fully Loaded");
 
-    let userName = "";
+      const firebaseConfig = {
+        apiKey: "AIzaSyALuznXYJR884_6eH4np6LZYxWnvzXB0-s",
+        authDomain: "zdrawchat.firebaseapp.com",
+        databaseURL: "https://zdrawchat-default-rtdb.firebaseio.com",
+        projectId: "zdrawchat",
+        storageBucket: "zdrawchat.appspot.com",
+        messagingSenderId: "50557242324",
+        appId: "1:50557242324:web:d7d22353f413b9d658a441",
+        measurementId: "G-E81DHMXZWQ"
+      };
 
-    document.getElementById('joinBtn').addEventListener('click', () => {
-      const input = document.getElementById('nameInput').value.trim();
-      if (input === "") {
-        alert("Please enter your name!");
-        return;
-      }
-      userName = input;
-      document.getElementById('joinArea').style.display = 'none';
-      document.getElementById('chatArea').style.display = 'block';
-      document.getElementById('messageInput').focus();
-    });
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.database();
+      console.log("✅ Firebase Initialized");
 
-    document.getElementById('sendBtn').addEventListener('click', () => {
-      const msg = document.getElementById('messageInput').value.trim();
-      if (msg === "") return;
-      db.ref("zdraw/messages").push({
-        name: userName,
-        text: msg,
-        timestamp: Date.now()
+      let userName = "";
+
+      // Join button logic
+      const joinBtn = document.getElementById("joinBtn");
+      joinBtn.addEventListener("click", function () {
+        console.log("👆 Join button clicked");
+        const input = document.getElementById("nameInput").value.trim();
+        if (input === "") {
+          alert("Please enter your name!");
+          console.warn("⚠️ No name entered");
+          return;
+        }
+        userName = input;
+        console.log("🧑 User name set:", userName);
+        document.getElementById("joinArea").style.display = "none";
+        document.getElementById("chatArea").style.display = "block";
+        document.getElementById("messageInput").focus();
       });
-      document.getElementById('messageInput').value = "";
-    });
 
-    db.ref("zdraw/messages").on("child_added", snapshot => {
-      const msg = snapshot.val();
-      const div = document.createElement('div');
-      div.textContent = `${msg.name}: ${msg.text}`;
-      document.getElementById('chatMessages').appendChild(div);
-      document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+      // Send button logic
+      const sendBtn = document.getElementById("sendBtn");
+      sendBtn.addEventListener("click", function () {
+        console.log("📨 Send button clicked");
+        const msg = document.getElementById("messageInput").value.trim();
+        if (msg === "") {
+          console.warn("⚠️ Empty message");
+          return;
+        }
+
+        db.ref("zdraw/messages").push({
+          name: userName,
+          text: msg,
+          timestamp: Date.now()
+        });
+
+        console.log(`✅ Message sent: ${userName}: ${msg}`);
+        document.getElementById("messageInput").value = "";
+      });
+
+      // Listener for messages
+      db.ref("zdraw/messages").on("child_added", snapshot => {
+        const msg = snapshot.val();
+        console.log("📩 New message received:", msg);
+
+        const div = document.createElement("div");
+        div.textContent = `${msg.name}: ${msg.text}`;
+        document.getElementById("chatMessages").appendChild(div);
+        document.getElementById("chatMessages").scrollTop = document.getElementById("chatMessages").scrollHeight;
+      });
     });
   </script>
 </body>
