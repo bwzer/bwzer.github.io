@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adam' Wiki</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+            background-color: #f4f4f4;
+        }
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+        .sidebar {
+            width: 250px;
+            background-color: #fff;
+            border-right: 1px solid #ddd;
+            padding: 20px;
+        }
+        .sidebar h2 {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+        .sidebar ul {
+            list-style: none;
+            padding: 0;
+        }
+        .sidebar ul li {
+            margin-bottom: 10px;
+        }
+        .sidebar ul li a {
+            text-decoration: none;
+            color: #333;
+        }
+        .sidebar ul li a:hover {
+            color: #007bff;
+        }
+        .content {
+            flex: 1;
+            padding: 20px;
+            background-color: #fff;
+        }
+        .content h1 {
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+        .content h2 {
+            font-size: 1.5em;
+            margin-top: 20px;
+        }
+        .content p {
+            margin-bottom: 15px;
+        }
+        .footer {
+            text-align: center;
+            padding: 10px;
+            background-color: #f4f4f4;
+            border-top: 1px solid #ddd;
+            font-size: 0.9em;
+            color: #666;
+        }
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                border-right: none;
+                border-bottom: 1px solid #ddd;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h2>Wiki Navigation</h2>
+            <ul>
+                <li><a href="#home">Home</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#docs">Documentation</a></li>
+                <li><a href="#contribute">Contribute</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+        </div>
+        <div class="content">
+            <h1>Stickmans Backstory</h1>
+            <p>This is the main page for your project's wiki. Use this space to provide an overview of your project, its purpose, and key information.</p>
+            
+            <h2 id="about">About</h2>
+            <p>Describe your project here. Include details about what it does, its goals, and any relevant background information.</p>
+            
+            <h2 id="docs">Documentation</h2>
+            <p>Link to or include detailed documentation for your project. This could cover installation instructions, usage examples, or API references.</p>
+            
+            <h2 id="contribute">Contribute</h2>
+            <p>Explain how others can contribute to your project. Include guidelines for submitting issues, pull requests, or other ways to get involved.</p>
+            
+            <h2 id="contact">Contact</h2>
+            <p>Provide contact information or links to community channels (e.g., GitHub Discussions, email, or other platforms).</p>
+        </div>
+    </div>
+    <div class="footer">
+        <p>&copy; 2025 Your GitHub Username. All rights reserved.</p>
+    </div>
+</body>
+</html>
