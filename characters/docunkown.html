@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unknown Documentation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+            background-color: #f4f4f4;
+        }
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+        .sidebar {
+            width: 250px;
+            background-color: #fff;
+            border-right: 1px solid #ddd;
+            padding: 20px;
+        }
+        .sidebar h2 {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+        .sidebar ul {
+            list-style: none;
+            padding: 0;
+        }
+        .sidebar ul li {
+            margin-bottom: 10px;
+        }
+        .sidebar ul li a {
+            text-decoration: none;
+            color: #333;
+        }
+        .sidebar ul li a:hover {
+            color: #007bff;
+        }
+        .content {
+            flex: 1;
+            padding: 20px;
+            background-color: #fff;
+        }
+        .content h1 {
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+        .content h2 {
+            font-size: 1.5em;
+            margin-top: 20px;
+        }
+        .content p {
+            margin-bottom: 15px;
+        }
+        .footer {
+            text-align: center;
+            padding: 10px;
+            background-color: #f4f4f4;
+            border-top: 1px solid #ddd;
+            font-size: 0.9em;
+            color: #666;
+        }
+        .warning-popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .warning-content {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            max-width: 400px;
+        }
+        .warning-content p {
+            margin-bottom: 20px;
+            font-size: 1.1em;
+        }
+        .warning-content button {
+            padding: 10px 20px;
+            font-size: 1em;
+            margin: 0 10px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+        }
+        .warning-content button.yes {
+            background-color: #333;
+            color: #fff;
+        }
+        .warning-content button.no {
+            background-color: #ccc;
+            color: #333;
+        }
+        .warning-content button:hover {
+            opacity: 0.9;
+        }
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                border-right: none;
+                border-bottom: 1px solid #ddd;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="warning-popup" id="warningPopup">
+        <div class="warning-content">
+            <p>Warning: The developer is not responsible for you reading this. This contains blood. Are you sure?</p>
+            <button class="yes" onclick="closeWarning()">Yes</button>
+            <button class="no" onclick="goBack()">No</button>
+        </div>
+    </div>
+    <div class="container">
+        <div class="sidebar">
+            <h2>Character Navigation</h2>
+            <ul>
+                <li><a href="../menu.html">Back to Menu</a></li>
+                <li><a href="docstickman.html">Stickman</a></li>
+                <li><a href="docjib.html">Jib</a></li>
+                <li><a href="docunknown.html">Unknown</a></li>
+                <li><a href="docstranger.html">Stranger</a></li>
+                <li><a href="docrichguy.html">Rich Guy</a></li>
+                <li><a href="docnooby.html">Nooby</a></li>
+            </ul>
+        </div>
+        <div class="content">
+            <h1>Unknown Documentation</h1>
+            <p>Welcome to the documentation for Unknown, a seemingly friendly character in your comic whose pleasant demeanor hides a chilling and blood-soaked past.</p>
+
+            <h2 id="overview">Overview</h2>
+            <p>Unknown is a mysterious figure in the Pencil Earth Dimension, known for his polite interactions and unassuming presence. Yet, behind his calm exterior lies a dark history that casts a shadow over the comic’s grayscale world.</p>
+
+            <h2 id="story">Unknown’s Story</h2>
+            <p>In the comic, Unknown blends seamlessly into the daily life of the Pencil Earth Dimension. He’s the one who offers a quiet smile to Stickman or shares a kind word with Stranger at the market. His presence is comforting, almost forgettable, which is exactly how he likes it. But Unknown harbors a sinister secret that would horrify his fellow characters.</p>
+            <p>Before the gamma ray burst that created the Second Earth, Unknown was no ordinary being. He was a cosmic wanderer, obsessed with the thrill of destruction. On the original Earth, he discovered a forbidden relic—a crystalline orb pulsing with chaotic energy. Driven by a twisted desire, Unknown unleashed the orb’s power, triggering the catastrophic gamma ray burst that obliterated the vibrant Earth and birthed the Pencil Earth Dimension. As the skies burned and blood rained from shattered cities, Unknown reveled in the carnage, his laughter drowned out by the screams of a dying world.</p>
+            <p>Over the next six years, Unknown’s obsession grew darker. The gamma ray burst’s energy fused with his essence, slowly transforming him into something monstrous—a living black hole. His body began to warp, emitting jagged bolts of lightning that could incinerate anything in their path. In hidden corners of the Pencil Earth, Unknown indulged his bloodlust, stalking lone travelers and leaving behind only crimson-stained sketches of their final moments. Each kill fed his transformation, drawing him closer to becoming a void that could consume the entire dimension.</p>
+            <p>Yet, in the present, Unknown maintains a facade of kindness, hiding his lightning-charged hands and the swirling darkness within. He knows that revealing his true nature would turn the comic’s heroes against him, so he plays the part of a friend—watching, waiting, and planning his next act of violence.</p>
+
+            <h2 id="appearance">Appearance</h2>
+            <p>Unknown’s design is deceptively simple:</p>
+            <ul>
+                <li><strong>Body</strong>: A shadowy, humanoid silhouette with faint, crackling outlines that hint at his unstable nature.</li>
+                <li><strong>Head</strong>: A featureless oval, with glowing, electric-blue eyes that flicker like lightning.</li>
+                <li><strong>Limbs</strong>: Thin, jagged lines that pulse with energy, capable of shooting deadly bolts.</li>
+                <li><strong>Details</strong>: No hair or costumes, but faint wisps of dark energy swirl around him, barely noticeable in the grayscale world.</li>
+            </ul>
+            <p>His appearance blends into the Pencil Earth’s aesthetic, but those who look closely might notice the faint sparks that betray his dangerous power.</p>
+
+            <h2 id="evolution">Evolution</h2>
+            <p>Unknown’s form has shifted over time:</p>
+            <ul>
+                <li><strong>Original Form (v1.0)</strong>: A humanoid wanderer on the original Earth, cloaked in mystery.</li>
+                <li><strong>Post-Burst (v2.0)</strong>: Gained electric-blue eyes and crackling limbs after unleashing the gamma ray burst.</li>
+                <li><strong>Current Form (v3.0)</strong>: A near-black hole entity, with a body that flickers between solid and void, emitting lightning.</li>
+            </ul>
+
+            <h2 id="characteristics">Characteristics</h2>
+            <p>Unknown is defined by:</p>
+            <ul>
+                <li><strong>Present Behavior</strong>: Polite, quiet, and friendly, blending into the comic’s everyday scenes.</li>
+                <li><strong>Hidden Nature</strong>: A bloodthirsty killer with lightning powers, driven by a love for destruction and nearing a black hole transformation.</li>
+                <li><strong>Role</strong>: A hidden antagonist in the comic, whose actions threaten the fragile balance of the Pencil Earth Dimension.</li>
+            </ul>
+
+            <h2 id="usage">Usage in Projects</h2>
+            <p>Unknown’s duality makes him ideal for stories exploring hidden danger or cosmic horror. To include Unknown in your project:</p>
+            <ul>
+                <li>Use vector graphics (e.g., SVG) to capture his shadowy form and lightning effects.</li>
+                <li>Reference the <a href="https://github.com/your-username/your-repo">GitHub repository</a> for assets and story snippets.</li>
+            </ul>
+
+            <h2 id="contribute">Contribute</h2>
+            <p>Want to explore Unknown’s dark deeds or his role in the comic? Submit ideas or assets via the <a href="https://github.com/your-username/your-repo">GitHub repository</a>.</p>
+        </div>
+    </div>
+    <div class="footer">
+        <p>© 2025 Your GitHub Username. All rights reserved.</p>
+    </div>
+    <script>
+        function closeWarning() {
+            document.getElementById('warningPopup').style.display = 'none';
+        }
+        function goBack() {
+            window.location.href = '../menu.html';
+        }
+    </script>
+</body>
+</html>
