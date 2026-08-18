@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JustPark — Smart Parking Simulator</title>
+<style>
+  :root {
+    --bg: #0b0f0d;
+    --panel: #121714;
+    --panel2: #1a211c;
+    --border: rgba(255,255,255,0.08);
+    --text: #e8f0ea;
+    --muted: #8aa396;
+    --brand: #2ecc71;
+    --brand2: #27ae60;
+    --red: #e74c3c;
+    --amber: #f1c40f;
+    --green: #2ecc71;
+    --blue: #3498db;
+    --gold: #f39c12;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 1120px; margin: 0 auto; padding: 0 20px 80px; }
+
+  /* ---------- Hero ---------- */
+  .hero { text-align: center; padding: 64px 20px 40px; position: relative; overflow: hidden; }
+  .hero::before {
+    content: ""; position: absolute; inset: 0; z-index: -1;
+    background:
+      radial-gradient(600px 300px at 50% -10%, rgba(46,204,113,0.16), transparent 60%),
+      radial-gradient(500px 300px at 80% 10%, rgba(52,152,219,0.12), transparent 60%);
+  }
+  .eyebrow {
+    display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--brand);
+    border: 1px solid rgba(46,204,113,0.35); border-radius: 999px;
+    padding: 5px 14px; margin-bottom: 20px;
+  }
+  .hero h1 {
+    font-size: clamp(44px, 8vw, 82px); font-weight: 800; line-height: 1.05;
+    background: linear-gradient(135deg, #ffffff, var(--brand) 55%, var(--blue));
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+  }
+  .hero .tagline { font-size: 20px; color: var(--muted); margin-top: 12px; }
+  .hero .vision {
+    margin: 24px auto 0; max-width: 660px; font-size: 15px; font-style: italic;
+    color: var(--text); opacity: 0.9;
+    border-left: 3px solid var(--brand); padding-left: 16px; text-align: left;
+  }
+
+  /* ---------- Sections ---------- */
+  h2 { font-size: 28px; font-weight: 800; margin: 52px 0 6px; }
+  h2 .num { color: var(--brand); opacity: 0.7; font-size: 17px; margin-right: 8px; }
+  p.lead { color: var(--muted); font-size: 15px; max-width: 760px; margin-bottom: 20px; }
+
+  .grid { display: grid; gap: 14px; }
+  .grid-2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .grid-3 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 14px; padding: 18px;
+  }
+  .card h4 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .card p { color: var(--muted); font-size: 13.5px; }
+  .card .feat-num {
+    display: inline-block; font-size: 11px; font-weight: 800; color: var(--brand);
+    background: rgba(46,204,113,0.12); border: 1px solid rgba(46,204,113,0.3);
+    border-radius: 6px; padding: 1px 7px; margin-right: 6px; vertical-align: 2px;
+  }
+
+  /* ---------- Simulator frame ---------- */
+  .sim-wrap {
+    display: flex; gap: 24px; align-items: stretch; flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  .phone {
+    flex: 0 0 320px; margin: 0 auto;
+    background: linear-gradient(180deg, #0f1a14, #131a15 50%, #10160f);
+    border-radius: 30px; padding: 14px;
+    box-shadow: 0 0 0 6px #1a1a1e, 0 0 0 8px #2a2a2e, 0 24px 60px rgba(0,0,0,0.55);
+    position: relative;
+  }
+  .ph-screen {
+    background: #0d120f; border-radius: 20px; overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .ph-status {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 12px; font-size: 10px; color: var(--muted);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .ph-status .batt { color: var(--green); font-weight: 700; }
+  .ph-head { padding: 12px 14px 8px; }
+  .ph-head .ttl {
+    font-weight: 800; font-size: 16px;
+    background: linear-gradient(135deg, #2ecc71, #3498db);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+  }
+  .ph-head .loc { font-size: 10px; color: var(--muted); display: block; margin-top: 1px; }
+
+  /* alert strip */
+  .ph-alert {
+    margin: 0 12px 10px; border-radius: 12px; padding: 10px 12px; font-size: 11px;
+    background: rgba(231,76,60,0.15); border: 1px solid rgba(231,76,60,0.4); color: #fff;
+    display: none; animation: pulse 1.6s infinite;
+  }
+  .ph-alert.show { display: block; }
+  .ph-alert .a-t { font-weight: 800; color: #ff8a80; }
+  .ph-alert .a-s { opacity: 0.85; font-size: 10px; margin-top: 2px; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.8} }
+
+  /* map */
+  .ph-map { padding: 4px 12px 12px; }
+  .map-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+  .zone { border-radius: 10px; padding: 8px; border: 1px solid rgba(255,255,255,0.07); }
+  .zone .z-head { display: flex; justify-content: space-between; font-size: 9px; color: var(--muted); margin-bottom: 6px; }
+  .zone .z-head b { color: #fff; }
+  .zone .spots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+  .spot {
+    aspect-ratio: 1; border-radius: 6px; position: relative;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+    transition: all 0.2s ease; cursor: pointer;
+  }
+  .spot.empty { background: rgba(46,204,113,0.25); border-color: rgba(46,204,113,0.5); }
+  .spot.full  { background: rgba(231,76,60,0.3); border-color: rgba(231,76,60,0.55); }
+  .spot.mine  { background: rgba(52,152,219,0.4); border-color: var(--blue); box-shadow: 0 0 10px rgba(52,152,219,0.6); }
+  .spot.mine::after { content: "P"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 13px; }
+  .spot.booked { background: rgba(241,196,15,0.28); border-color: var(--amber); }
+  .spot.booked::after { content: ""; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+  .spot.charge { background: rgba(155,89,182,0.35); border-color: #9b59b6; }
+  .spot.charge::after { content: ""; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; font-weight: 700; }
+  .spot.blocker { background: #222; border-color: #444; }
+  .spot.blocker::after { content: "#"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #ff5252; font-weight: 900; font-size: 14px; }
+  .spot.route { box-shadow: 0 0 0 2px #fff, 0 0 14px rgba(255,255,255,0.7); }
+  .you-marker { color: #fff; font-size: 9px; text-align: center; margin-top: 6px; }
+  .you-marker .dot { display: inline-block; width: 7px; height: 7px; background: #fff; border-radius: 50%; margin-right: 4px; }
+
+  /* legend + heat map */
+  .legend { display: flex; gap: 10px; justify-content: center; margin: 8px 0 4px; font-size: 8px; color: var(--muted); flex-wrap: wrap; }
+  .legend span { display: inline-flex; align-items: center; gap: 3px; }
+  .legend i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+  .lg-red { background: var(--red); } .lg-amber { background: var(--amber); } .lg-green { background: var(--green); }
+  .lg-blue { background: var(--blue); } .lg-gold { background: var(--gold); } .lg-purple { background: #9b59b6; }
+  .zone.heat-red { border-color: var(--red); background: rgba(231,76,60,0.08); }
+  .zone.heat-amber { border-color: var(--amber); background: rgba(241,196,15,0.08); }
+  .zone.heat-green { border-color: var(--green); background: rgba(46,204,113,0.08); }
+
+  /* controls */
+  .ph-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 0 12px 12px; }
+  .btn {
+    border: 1px solid var(--border); background: var(--panel2);
+    color: var(--text); border-radius: 9px; padding: 9px 6px; font-size: 10.5px;
+    font-weight: 700; cursor: pointer; transition: all 0.15s ease; text-align: center;
+    letter-spacing: 0.2px;
+  }
+  .btn:hover { border-color: var(--brand); }
+  .btn:active { transform: scale(0.97); }
+  .btn.primary { background: var(--brand); color: #04120a; border-color: var(--brand); }
+  .btn.pro-on { background: var(--gold); color: #1a1204; border-color: var(--gold); }
+  .btn.active { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand); }
+
+  /* log */
+  .ph-log {
+    margin: 0 12px 12px; background: #0a0e0b; border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px; padding: 8px 10px; font-size: 9px; color: var(--muted);
+    height: 64px; overflow-y: auto;
+  }
+  .ph-log .line { padding: 1px 0; border-bottom: 1px dashed rgba(255,255,255,0.04); }
+  .ph-log .ok { color: var(--green); } .ph-log .warn { color: var(--amber); } .ph-log .err { color: #ff8a80; }
+
+  /* modal (inside phone) */
+  .modal {
+    position: absolute; inset: 0; background: rgba(4,8,5,0.9); border-radius: 30px;
+    display: none; align-items: center; justify-content: center; padding: 24px; z-index: 5;
+  }
+  .modal.show { display: flex; }
+  .modal-box {
+    background: var(--panel); border: 1px solid rgba(46,204,113,0.3); border-radius: 14px;
+    padding: 16px; width: 100%; max-width: 280px;
+  }
+  .modal-box h5 { font-size: 14px; margin-bottom: 8px; }
+  .modal-box p { font-size: 11px; color: var(--muted); margin-bottom: 10px; }
+  .modal-box label { font-size: 10px; color: var(--muted); display: block; margin: 8px 0 3px; }
+  .modal-box input, .modal-box select {
+    width: 100%; background: #0a0e0b; border: 1px solid var(--border); color: var(--text);
+    border-radius: 7px; padding: 7px 8px; font-size: 11px;
+  }
+  .modal-box .row { display: flex; gap: 6px; margin-top: 10px; }
+  .modal-box .row .btn { flex: 1; }
+
+  /* side panel */
+  .sim-side { flex: 1; min-width: 280px; }
+  .sim-side h3 { font-size: 18px; font-weight: 800; margin: 4px 0 10px; }
+  .sim-side .controls-note { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+
+  .footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--border); }
+
+  @media (max-width: 720px) { .phone { flex-basis: 300px; } }
+</style>
+</head>
+<body>
+
+<main>
+
+  <!-- ============ HERO ============ -->
+  <div class="hero">
+    <span class="eyebrow">Smart parking · Book ahead · Never lose your car</span>
+    <h1>JustPark</h1>
+    <p class="tagline">Book a private spot days ahead, park in seconds, and always find your way back.</p>
+    <p class="vision">"Never circle the block for a concert again."</p>
+  </div>
+
+  <!-- ============ LIVE SIMULATOR ============ -->
+  <section>
+    <h2><span class="num">00</span>Live Simulator</h2>
+    <p class="lead">This is a working simulation of the JustPark app. Tap the spots and buttons below — the phone reacts exactly like the real product.</p>
+
+    <div class="sim-wrap">
+      <!-- PHONE -->
+      <div class="phone" id="phone">
+        <div class="ph-screen">
+          <div class="ph-status">
+            <span>JustPark v1.0</span>
+            <span class="batt" id="proFlag">FREE</span>
+          </div>
+          <div class="ph-head">
+            <span class="ttl">JustPark</span>
+            <span class="loc" id="phLoc">Main Arena Car Park &middot; Manchester</span>
+          </div>
+
+          <div class="ph-alert" id="phAlert">
+            <div class="a-t" id="alertT"></div>
+            <div class="a-s" id="alertS"></div>
+          </div>
+
+          <div class="ph-map">
+            <div class="map-grid" id="mapGrid"></div>
+            <div class="you-marker"><span class="dot"></span>You are here &middot; <span id="gps">53.4861 N, 2.2426 W</span></div>
+            <div class="legend">
+              <span><i class="lg-green"></i> Free</span>
+              <span><i class="lg-red"></i> Full</span>
+              <span><i class="lg-blue"></i> Your car</span>
+              <span><i class="lg-gold"></i> Booked</span>
+              <span><i class="lg-purple"></i> Charging</span>
+              <span><i style="background:#222"></i> Blocker</span>
+            </div>
+          </div>
+
+          <div class="ph-controls">
+            <button class="btn primary" id="btnBook">Book Spot</button>
+            <button class="btn" id="btnHeat">Heat Map</button>
+            <button class="btn" id="btnFind">Find My Car</button>
+            <button class="btn" id="btnCharge">Charging</button>
+            <button class="btn" id="btnPro">Go PRO</button>
+            <button class="btn" id="btnSteal">Simulate Theft</button>
+            <button class="btn" id="btnUnlock">Enter Code</button>
+            <button class="btn" id="btnTicket">Ticket Claim</button>
+          </div>
+
+          <div class="ph-log" id="phLog"></div>
+        </div>
+
+        <!-- booking modal -->
+        <div class="modal" id="bookModal">
+          <div class="modal-box">
+            <h5>Book a private spot</h5>
+            <p>Reserve days ahead for a concert or event.</p>
+            <label>Event</label>
+            <select id="eventSel">
+              <option>Taylor Swift — Manchester Arena</option>
+              <option>Coldplay — Etihad Stadium</option>
+              <option>F1 Grand Prix — Silverstone</option>
+              <option>Music Festival — Victoria Park</option>
+            </select>
+            <label>Date</label>
+            <input type="date" id="dateSel">
+            <label>Zone preference</label>
+            <select id="zoneSel">
+              <option value="A">Zone A — North Lot (green)</option>
+              <option value="B">Zone B — East Lot (yellow)</option>
+              <option value="C">Zone C — Main Lot (red)</option>
+            </select>
+            <div class="row">
+              <button class="btn" id="bookCancel">Cancel</button>
+              <button class="btn primary" id="bookConfirm">Reserve</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- blocker modal -->
+        <div class="modal" id="codeModal">
+          <div class="modal-box">
+            <h5>Heavy blocker locked</h5>
+            <p>This spot is pre-booked. A physical blocker is raised — it only lowers when the correct code is entered.</p>
+            <label>Enter unlock code</label>
+            <input type="text" id="codeInput" maxlength="4" placeholder="4-digit code">
+            <div class="row">
+              <button class="btn" id="codeCancel">Cancel</button>
+              <button class="btn primary" id="codeConfirm">Unlock</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- SIDE -->
+      <div class="sim-side">
+        <h3>Try it yourself</h3>
+        <p class="controls-note">Each button below the map maps to one of the 10 features. Green = free, red = full, blue = your car, gold = pre-booked, purple = EV charging, dark # = locked blocker.</p>
+
+        <div class="grid grid-2">
+          <div class="card"><h4><span class="feat-num">1</span>Book days ahead</h4><p>Tap "Book Spot", pick a concert and a date, reserve a private spot before you leave home.</p></div>
+          <div class="card"><h4><span class="feat-num">2</span>Spot taken? Auto-reroute</h4><p>If your target spot is occupied, the app finds a new one in under 10 seconds — unless you pre-booked it (then the blocker holds it).</p></div>
+          <div class="card"><h4><span class="feat-num">3</span>Heat map</h4><p>"Heat Map" colours the zones: red = full, yellow = nearly full, green = 10+ spots free.</p></div>
+          <div class="card"><h4><span class="feat-num">4</span>Blocker + code</h4><p>Pre-booked spots raise a heavy physical blocker. It only lowers when you type your unlock code.</p></div>
+          <div class="card"><h4><span class="feat-num">5</span>Find your car</h4><p>"Find My Car" draws a route from your marker back to your exact spot.</p></div>
+          <div class="card"><h4><span class="feat-num">6</span>24/7 anti-theft</h4><p>"Simulate Theft" warns if the car moves and you're not with it. It stays silent when your phone (with the app) is inside.</p></div>
+          <div class="card"><h4><span class="feat-num">7</span>EV charging spots</h4><p>"Charging" reveals every charging spot for smart cars when you're running low.</p></div>
+          <div class="card"><h4><span class="feat-num">8</span>PRO high alert</h4><p>"Go PRO" puts the app on very high alert and unlocks extra features.</p></div>
+          <div class="card"><h4><span class="feat-num">9</span>75% ticket cover</h4><p>"Ticket Claim" simulates a fine — JustPark covers 75% of it for you.</p></div>
+          <div class="card"><h4><span class="feat-num">10</span>GPS pinpoint + guide</h4><p>Coordinates pinpoint the lot (top-left of the map). A live guide arrow leads you to your spot.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="footer">
+    JustPark &middot; Book ahead. Park in seconds. Find your way back.<br>
+    GPS lot: 53.4861 N, 2.2426 W &middot; Manchester, UK
+  </div>
+
+</main>
+
+<script>
+(function () {
+  // ---- state ----
+  var zones = {
+    A: { name: "Zone A", spots: 8, free: 6, charge: 1 },   // green (10+ free overall -> treat as green zone)
+    B: { name: "Zone B", spots: 8, free: 2, charge: 1 },   // yellow (nearly full)
+    C: { name: "Zone C", spots: 8, free: 0, charge: 0 }    // red (full)
+  };
+  var mySpot = null;          // e.g. "A3"
+  var bookedSpot = null;      // pre-booked spot
+  var heatOn = false;
+  var chargeOn = false;
+  var proOn = false;
+  var phoneWithMe = true;     // for anti-theft
+  var routeOn = false;
+  var unlockCode = "0718";
+
+  var log = [];
+  function say(msg, cls) {
+    log.push({ t: msg, c: cls || "" });
+    var el = document.getElementById("phLog");
+    el.innerHTML = log.map(function (l) { return '<div class="line ' + l.c + '">' + l.t + "</div>"; }).join("");
+    el.scrollTop = el.scrollHeight;
+  }
+  function alert(msg, sub) {
+    document.getElementById("phAlert").classList.add("show");
+    document.getElementById("alertT").textContent = msg;
+    document.getElementById("alertS").textContent = sub || "";
+  }
+  function clearAlert() { document.getElementById("phAlert").classList.remove("show"); }
+  function setLoc(t) { document.getElementById("phLoc").innerHTML = t; }
+
+  // ---- render map ----
+  function render() {
+    var grid = document.getElementById("mapGrid");
+    grid.innerHTML = "";
+    ["A", "B", "C"].forEach(function (z) {
+      var zone = zones[z];
+      var wrap = document.createElement("div");
+      wrap.className = "zone";
+      if (heatOn) {
+        var f = zone.free;
+        if (f >= 6) wrap.classList.add("heat-green");
+        else if (f >= 1) wrap.classList.add("heat-amber");
+        else wrap.classList.add("heat-red");
+      }
+      var head = document.createElement("div");
+      head.className = "z-head";
+      head.innerHTML = "<b>" + zone.name + "</b><span>" +
+        (heatOn
+          ? (zone.free >= 6 ? "GREEN &middot; " + zone.free + " free" : zone.free >= 1 ? "YELLOW &middot; " + zone.free + " free" : "RED &middot; full")
+          : zone.free + " free") + "</span>";
+      wrap.appendChild(head);
+      var spotsEl = document.createElement("div");
+      spotsEl.className = "spots";
+      for (var i = 0; i < zone.spots; i++) {
+        var id = z + (i + 1);
+        var s = document.createElement("div");
+        s.className = "spot";
+        s.dataset.id = id;
+
+        var isMine = mySpot === id;
+        var isBooked = bookedSpot === id;
+        var idx = i + 1;
+
+        if (isBooked) s.classList.add("booked");
+        else if (isMine) s.classList.add("mine");
+        else if (chargeOn && i === zone.charge - 1) s.classList.add("charge");
+        else if (idx > zone.free) s.classList.add("full");
+        else s.classList.add("empty");
+
+        if (routeOn && isMine) s.classList.add("route");
+
+        s.addEventListener("click", function (ev) { spotTap(ev.currentTarget.dataset.id); });
+        spotsEl.appendChild(s);
+      }
+      wrap.appendChild(spotsEl);
+      grid.appendChild(wrap);
+    });
+    document.getElementById("proFlag").textContent = proOn ? "PRO" : "FREE";
+    document.getElementById("btnPro").textContent = proOn ? "PRO ON" : "Go PRO";
+    document.getElementById("btnPro").classList.toggle("pro-on", proOn);
+    document.getElementById("btnHeat").classList.toggle("active", heatOn);
+    document.getElementById("btnCharge").classList.toggle("active", chargeOn);
+    document.getElementById("btnFind").classList.toggle("active", routeOn);
+  }
+
+  // ---- spot tap ----
+  function spotTap(id) {
+    var z = id[0];
+    if (mySpot === id) { say("That's your car — spot " + id + ".", "ok"); return; }
+    if (bookedSpot === id) { say("Spot " + id + " is pre-booked — blocker raised.", "warn"); openCode(id); return; }
+
+    var idx = parseInt(id.slice(1), 10);
+    var zone = zones[z];
+
+    // anti-theft demo: "you" must be near. phoneWithMe controls warning.
+    if (idx > zone.free && bookedSpot !== id) {
+      // spot is full -> feature 2 auto reroute
+      say("Spot " + id + " is taken. Finding a new spot...", "warn");
+      if (proOn) { say("PRO high alert: scanning all zones...", "warn"); }
+      setTimeout(function () {
+        var alt = findFree();
+        if (alt) {
+          say("New spot " + alt + " found in under 10s. Redirecting GPS.", "ok");
+          routeOn = true; mySpot = alt; alert("New spot found", "Redirecting you to " + alt);
+          render();
+          setTimeout(function () { routeOn = false; render(); }, 4000);
+        } else {
+          say("No spots left in this lot.", "err");
+        }
+      }, proOn ? 3000 : 6000);
+      return;
+    }
+
+    // free spot -> park
+    mySpot = id;
+    routeOn = false;
+    clearAlert();
+    setLoc("Main Arena Car Park &middot; Manchester");
+    say("Parked at " + id + ". GPS saved: 53.4861 N, 2.2426 W.", "ok");
+    render();
+  }
+
+  function findFree() {
+    for (var z in zones) {
+      var zone = zones[z];
+      for (var i = 0; i < zone.spots; i++) {
+        var id = z + (i + 1);
+        if (mySpot !== id && bookedSpot !== id && (i + 1) <= zone.free) return id;
+      }
+    }
+    return null;
+  }
+
+  // ---- booking modal ----
+  function openBook() {
+    var d = new Date(); d.setDate(d.getDate() + 3);
+    document.getElementById("dateSel").value = d.toISOString().slice(0, 10);
+    document.getElementById("bookModal").classList.add("show");
+  }
+  document.getElementById("btnBook").addEventListener("click", openBook);
+  document.getElementById("bookCancel").addEventListener("click", function () { document.getElementById("bookModal").classList.remove("show"); });
+  document.getElementById("bookConfirm").addEventListener("click", function () {
+    var ev = document.getElementById("eventSel").value;
+    var dt = document.getElementById("dateSel").value;
+    var z = document.getElementById("zoneSel").value;
+    var zone = zones[z];
+    // book the first free spot in that zone
+    var spot = null;
+    for (var i = 0; i < zone.spots; i++) {
+      var id = z + (i + 1);
+      if (i + 1 <= zone.free) { spot = id; break; }
+    }
+    document.getElementById("bookModal").classList.remove("show");
+    if (!spot) {
+      say("Zone " + z + " is full for that date. Try another zone.", "err");
+      return;
+    }
+    bookedSpot = spot;
+    unlockCode = String(Math.floor(1000 + Math.random() * 9000));
+    say("Booked " + spot + " for '" + ev + "' on " + dt + ".", "ok");
+    say("Blocker raised. Unlock code: " + unlockCode + ".", "warn");
+    render();
+  });
+
+  // ---- blocker code modal ----
+  function openCode(id) {
+    document.getElementById("codeInput").value = "";
+    document.getElementById("codeModal").classList.add("show");
+    document.getElementById("codeModal").dataset.id = id;
+  }
+  document.getElementById("btnUnlock").addEventListener("click", function () {
+    if (!bookedSpot) { say("No pre-booked spot to unlock.", "warn"); return; }
+    openCode(bookedSpot);
+  });
+  document.getElementById("codeCancel").addEventListener("click", function () { document.getElementById("codeModal").classList.remove("show"); });
+  document.getElementById("codeConfirm").addEventListener("click", function () {
+    var v = document.getElementById("codeInput").value;
+    var id = document.getElementById("codeModal").dataset.id;
+    document.getElementById("codeModal").classList.remove("show");
+    if (v === unlockCode) {
+      say("Code accepted. Blocker lowering at " + id + "...", "ok");
+      setTimeout(function () {
+        bookedSpot = null; mySpot = id; routeOn = false;
+        clearAlert();
+        say("Blocker down. Welcome to spot " + id + ".", "ok");
+        render();
+      }, 1500);
+    } else {
+      say("Wrong code. Blocker stays locked.", "err");
+    }
+  });
+
+  // ---- heat map ----
+  document.getElementById("btnHeat").addEventListener("click", function () {
+    heatOn = !heatOn;
+    say(heatOn ? "Heat map ON — red = full, yellow = nearly full, green = 10+ free." : "Heat map OFF.", heatOn ? "ok" : "");
+    render();
+  });
+
+  // ---- find my car ----
+  document.getElementById("btnFind").addEventListener("click", function () {
+    if (!mySpot) { say("You haven't parked yet. Tap a free spot first.", "err"); return; }
+    routeOn = !routeOn;
+    if (routeOn) {
+      say("Routing you back to " + mySpot + ". Follow the highlight.", "ok");
+      setLoc("Walking route &middot; 42 m to " + mySpot);
+      alert("Find your car", "Head to the highlighted spot " + mySpot);
+      setTimeout(function () { routeOn = false; clearAlert(); render(); }, 5000);
+    } else {
+      clearAlert();
+      say("Route cleared.", "");
+    }
+    render();
+  });
+
+  // ---- charging ----
+  document.getElementById("btnCharge").addEventListener("click", function () {
+    chargeOn = !chargeOn;
+    say(chargeOn ? "Smart car detected. Showing EV charging spots (purple)." : "Charging spots hidden.", chargeOn ? "ok" : "");
+    render();
+  });
+
+  // ---- pro ----
+  document.getElementById("btnPro").addEventListener("click", function () {
+    proOn = !proOn;
+    if (proOn) {
+      say("PRO activated — very high alert + extra features.", "ok");
+      say("Extra: instant reroute, theft telemetry, priority blocker.", "ok");
+      alert("PRO HIGH ALERT", "All sensors armed. Extra features unlocked.");
+    } else {
+      say("PRO deactivated.", "");
+      clearAlert();
+    }
+    render();
+  });
+
+  // ---- theft ----
+  document.getElementById("btnSteal").addEventListener("click", function () {
+    if (!mySpot) { say("Park your car first.", "err"); return; }
+    if (phoneWithMe) {
+      // phone with you -> no warning, feature 6 exception
+      say("Car is moving — but your phone is with you, so no alarm.", "warn");
+      mySpot = null;
+      setTimeout(function () {
+        say("You drove away. Spot " + (bookedSpot || "?") + " ... cleared.", "");
+        render();
+      }, 1200);
+    } else {
+      alert("THEFT WARNING", "Your car is moving and you're not inside!");
+      say("24/7 guard: car moving without you — alerting owner.", "err");
+      if (proOn) { say("PRO: live GPS ping sent to emergency contacts.", "err"); }
+    }
+    phoneWithMe = !phoneWithMe; // toggle so you can demo both branches
+    render();
+  });
+
+  // ---- ticket ----
+  document.getElementById("btnTicket").addEventListener("click", function () {
+    if (!mySpot) { say("Park your car first, then get ticketed.", "err"); return; }
+    var fine = 60;
+    var covered = Math.round(fine * 0.75);
+    say("Parking fine issued: £" + fine + ".", "err");
+    setTimeout(function () {
+      say("JustPark covered 75% (£" + covered + "). You pay £" + (fine - covered) + ".", "ok");
+    }, 900);
+  });
+
+  // init
+  var today = new Date();
+  document.getElementById("dateSel").min = today.toISOString().slice(0, 10);
+  say("Welcome to JustPark. Tap a free spot to park.", "ok");
+  render();
+})();
+</script>
+
+</body>
+</html>
