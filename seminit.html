@@ -30,40 +30,7 @@
   a { color: var(--cyan); text-decoration: none; }
   a:hover { text-decoration: underline; }
 
-  /* Top nav */
-  .topnav {
-    position: sticky; top: 0; z-index: 100;
-    display: flex; align-items: center; gap: 4px;
-    background: rgba(10,15,26,0.9);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--border);
-    padding: 10px 20px;
-    flex-wrap: wrap;
-  }
-  .brand {
-    font-weight: 800; font-size: 17px; letter-spacing: 0.3px;
-    margin-right: auto;
-    background: linear-gradient(135deg, var(--cyan), var(--blue));
-    -webkit-background-clip: text; background-clip: text;
-    -webkit-text-fill-color: transparent; color: transparent;
-  }
-  .tab {
-    background: transparent; border: 1px solid transparent;
-    color: var(--muted); font-size: 13px; font-weight: 600;
-    padding: 7px 14px; border-radius: 999px; cursor: pointer;
-    transition: all 0.15s ease; font-family: inherit;
-  }
-  .tab:hover { color: var(--text); background: rgba(255,255,255,0.05); }
-  .tab.active {
-    color: var(--cyan); background: rgba(0,210,255,0.10);
-    border-color: rgba(0,210,255,0.25);
-  }
-
   main { max-width: 1080px; margin: 0 auto; padding: 0 20px 80px; }
-  section.pane { display: none; animation: fade 0.25s ease; }
-  section.pane.active { display: block; }
-  @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-
   /* Hero */
   .hero {
     text-align: center; padding: 72px 20px 48px;
@@ -245,13 +212,7 @@
 </head>
 <body>
 
-<nav class="topnav">
-  <span class="brand">SEMINIT · Junior Shark Tank</span>
-  <button class="tab active" data-tab="seminit">Seminit</button>
-  <button class="tab" data-tab="stopeat">Stop &amp; Eat</button>
-  <button class="tab" data-tab="petsafe">PetSafe Buddy</button>
-  <button class="tab" data-tab="compare">Compare</button>
-</nav>
+
 
 <main>
 
@@ -268,7 +229,7 @@
   </div>
 
   <!-- ============ SEMINIT ============ -->
-  <section class="pane active" id="pane-seminit">
+  <section>
 
     <div class="grid grid-3" style="margin-top:8px;">
       <div class="card stat"><div class="big">30 km</div><div class="small">distance to nearest weather station (KLIA)</div></div>
@@ -448,243 +409,6 @@
 
   </section>
 
-  <!-- ============ STOP & EAT ============ -->
-  <section class="pane" id="pane-stopeat">
-
-    <div class="hero" style="padding:48px 20px 32px;">
-      <span class="eyebrow">Idea 2 · Junior Shark Tank</span>
-      <h1 style="font-size:clamp(36px,7vw,64px);">Stop &amp; Eat</h1>
-      <p class="tagline">Malaysia's first fully solar-powered, zero-waste food truck.</p>
-      <div class="ask-badge">
-        <span class="amount">RM 22,000</span>
-        <span class="label">for 20% equity<br>to buy the truck + solar + kitchen</span>
-      </div>
-    </div>
-
-    <div class="grid grid-3" style="margin-top:8px;">
-      <div class="card stat"><div class="big">RM 130,660</div><div class="small">Year 1 profit</div></div>
-      <div class="card stat"><div class="big">2.5 mo</div><div class="small">to breakeven (fastest)</div></div>
-      <div class="card stat"><div class="big">0</div><div class="small">single-use plastic items per day</div></div>
-    </div>
-
-    <h2><span class="num">01</span>The Problem</h2>
-    <p class="lead">Malaysia has a food truck boom — but trucks run diesel generators all day and use 200+ single-use plastic items daily. Young people want tasty food that doesn't destroy the planet.</p>
-    <div class="grid grid-2">
-      <div class="card"><h4>Diesel generators</h4><p>Loud, smelly, burning 3–5 litres a day right where people eat.</p></div>
-      <div class="card"><h4>Plastic waste</h4><p>6,000 pieces a month from a single truck going to landfill.</p></div>
-      <div class="card"><h4>Imported ingredients</h4><p>Food travels 200 km+ before reaching your plate.</p></div>
-      <div class="card"><h4>Climate guilt</h4><p>No "feel-good" food truck option exists. Not eco-boring — eco-AWESOME.</p></div>
-    </div>
-
-    <h2><span class="num">02</span>The Product</h2>
-    <div class="grid grid-2">
-      <div class="card"><h4>100% solar kitchen</h4><p>4 × 100W panels + lithium battery bank. Runs grill, fridge, blender, lights, POS. No generator, no noise, no fumes.</p></div>
-      <div class="card"><h4>Zero single-use plastic</h4><p>Banana leaf wraps, palm leaf plates, bamboo straws, paper cups. Everything compostable or reusable.</p></div>
-      <div class="card"><h4>Local farm-to-truck</h4><p>Ingredients within 10 km of Semenyih — Broga vegetables, Hulu Langat eggs, orchards off Jalan Bangi.</p></div>
-      <div class="card"><h4>Rotating menu</h4><p>Weekly menu follows what's fresh at local farms. Less waste, fresher food. BYOC gets RM 1 off.</p></div>
-    </div>
-
-    <h3>Signature menu (rotating)</h3>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Item</th><th class="num">Price (RM)</th><th>Eco-feature</th></tr></thead>
-        <tbody>
-          <tr><td><strong>Nasi Lemak Solar</strong></td><td class="num">9</td><td>Banana leaf wrap, local chilli sambal</td></tr>
-          <tr><td><strong>Satay Langit</strong> (8 sticks)</td><td class="num">12</td><td>Bamboo skewers, paper cup sauce</td></tr>
-          <tr><td><strong>Roti John Hijau</strong></td><td class="num">8</td><td>Local eggs, compostable wrap</td></tr>
-          <tr><td><strong>Solar Smoothie Bowl</strong></td><td class="num">10</td><td>100% local fruit, blended on solar</td></tr>
-          <tr><td><strong>Nasi Goreng Kampung</strong></td><td class="num">8</td><td>Broga vegetables, palm leaf plate</td></tr>
-          <tr><td><strong>Sirap Limau Ais</strong></td><td class="num">3</td><td>Bamboo straw, paper cup</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <h2><span class="num">03</span>Business Model</h2>
-    <p class="lead">Operate 25 days a month, rotating locations around Semenyih — schools at lunch, night markets in the evening, Nottingham University on weekends. Average RM 610 revenue a day.</p>
-    <div class="grid grid-3">
-      <div class="card stat"><div class="big">85</div><div class="small">avg meals per day</div></div>
-      <div class="card stat"><div class="big">RM 610</div><div class="small">avg daily revenue</div></div>
-      <div class="card stat"><div class="big">64%</div><div class="small">weighted avg margin</div></div>
-    </div>
-    <blockquote>Every meal sold = one tree pledged for planting. 25,000 meals in Year 1 means 25,000 new trees.</blockquote>
-
-    <h2><span class="num">04</span>Year 1 Financials</h2>
-    <div class="grid grid-3">
-      <div class="card stat"><div class="big">RM 200,060</div><div class="small">Year 1 revenue</div></div>
-      <div class="card stat"><div class="big">RM 130,660</div><div class="small">Year 1 profit</div></div>
-      <div class="card stat"><div class="big">RM 22,100</div><div class="small">startup cost</div></div>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Startup breakdown</th><th class="num">Cost (RM)</th></tr></thead>
-        <tbody>
-          <tr><td>Used van + conversion</td><td class="num">12,000</td></tr>
-          <tr><td>Solar panels + charge controller</td><td class="num">2,000</td></tr>
-          <tr><td>Lithium battery bank + inverter</td><td class="num">3,600</td></tr>
-          <tr><td>Kitchen equipment</td><td class="num">2,200</td></tr>
-          <tr><td>Packaging, permits, branding, marketing</td><td class="num">2,300</td></tr>
-          <tr><td><strong>Total startup</strong></td><td class="num"><strong>RM 22,100</strong></td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p class="lead">Monthly: revenue RM 15,250 vs costs RM 5,700 = RM 9,550 monthly profit. The truck pays for itself in under 3 months.</p>
-
-    <h2><span class="num">05</span>Why It Wins</h2>
-    <div class="grid grid-2">
-      <div class="card"><h4>You can TASTE the pitch</h4><p>Bring samples. Let the sharks eat nasi lemak on a banana leaf.</p></div>
-      <div class="card"><h4>Climate + Malaysian culture</h4><p>Nasi lemak on banana leaf — not some foreign concept.</p></div>
-      <div class="card"><h4>Proven demand</h4><p>Food trucks are already popular. This just makes one greener.</p></div>
-      <div class="card"><h4>Scalable</h4><p>One truck proves it, then five across Selangor, then fifty.</p></div>
-    </div>
-
-    <h2><span class="num">06</span>The Pitch</h2>
-    <blockquote>"This banana leaf goes back to the earth in 14 days. This styrofoam? It stays for 500 years — longer than my grandchildren will live. I'm asking for RM 22,000 for a 20% stake to launch Malaysia's first zero-waste food truck. Sharks — who's hungry?"</blockquote>
-
-    <h2><span class="num">07</span>Shark Q&amp;A</h2>
-    <details><summary>What happens on cloudy or rainy days?</summary><div class="ans">Panels still generate 25–30% of normal power on cloudy days, and the battery bank stores 2 days of power. On rare 3+ day rain streaks there's a small backup charger. Malaysia gets 5–6 hours of strong sun almost daily.</div></details>
-    <details><summary>Why would teens pay RM 9 for nasi lemak when a stall charges RM 2?</summary><div class="ans">They're paying for an Instagram-worthy meal, the feel-good of supporting the environment, and a loyalty program with a free meal every 6th visit. Today's students care about climate.</div></details>
-    <details><summary>Can you really make RM 130,000 in Year 1?</summary><div class="ans">85 meals × RM 8.33 × 25 days = RM 17,700/month, minus RM 5,800 costs = ~RM 12,000/month. That's RM 144,000 — I said RM 130,000 to be conservative.</div></details>
-    <details><summary>What about food safety and permits?</summary><div class="ans">A food handling certificate (1-day course, RM 100) and a temporary stall license from MPKj. Parents handle cooking and financials; I'm the face of the brand.</div></details>
-
-  </section>
-
-  <!-- ============ PETSAFE BUDDY ============ -->
-  <section class="pane" id="pane-petsafe">
-
-    <div class="hero" style="padding:48px 20px 32px;">
-      <span class="eyebrow">Idea 3 · Junior Shark Tank</span>
-      <h1 style="font-size:clamp(36px,7vw,64px);">PetSafe Buddy</h1>
-      <p class="tagline">A chewable, throw-able, lovable toy with a secret safety superpower.</p>
-      <div class="ask-badge">
-        <span class="amount">RM 12,600</span>
-        <span class="label">for 15% equity<br>to build the first 50 units</span>
-      </div>
-    </div>
-
-    <div class="grid grid-3" style="margin-top:8px;">
-      <div class="card stat"><div class="big">RM 202,250</div><div class="small">Year 1 revenue</div></div>
-      <div class="card stat"><div class="big">RM 72,466</div><div class="small">Year 1 profit</div></div>
-      <div class="card stat"><div class="big">~4 mo</div><div class="small">to breakeven</div></div>
-    </div>
-
-    <h2><span class="num">01</span>The Problem</h2>
-    <p class="lead">Malaysian pet ownership is booming — but pets escape, overheat, and get lost. Existing trackers are ugly, expensive, dog-only GPS collars that pets hate wearing.</p>
-    <div class="grid grid-2">
-      <div class="card"><h4>Pets escape and get lost</h4><p>Thousands of "kucing hilang" posts on Malaysian Facebook groups every month.</p></div>
-      <div class="card"><h4>Heat danger</h4><p>34–36°C daily. A pet in a hot house can suffer heatstroke in under an hour.</p></div>
-      <div class="card"><h4>Current trackers are ugly + pricey</h4><p>GPS collars cost RM 200–500 and pets hate wearing bulky plastic boxes.</p></div>
-      <div class="card"><h4>Cats are underserved</h4><p>Collars fall off cats. Most tracking products are designed for dogs only.</p></div>
-    </div>
-
-    <h2><span class="num">02</span>The Product</h2>
-    <p class="lead"><strong>Outside:</strong> a fun, durable silicone toy — a bone (dogs), a fish (cats), a ball (everyone). It squeaks. It bounces. <strong>Inside:</strong> a tiny waterproof capsule with GPS, temperature, and motion sensors + a 7-day battery.</p>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Alert</th><th>Trigger</th><th>What the owner gets</th></tr></thead>
-        <tbody>
-          <tr><td><strong>"Fence Breaker!"</strong></td><td>Pet leaves the safe zone</td><td>Instant notification with live GPS location</td></tr>
-          <tr><td><strong>"Too Hot!"</strong></td><td>Temperature around pet exceeds 32°C</td><td>Alert: "Buddy's environment is dangerously hot!"</td></tr>
-          <tr><td><strong>"Where's My Buddy?"</strong></td><td>Owner taps "Find My Pet"</td><td>Real-time GPS on a map</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <h3>PetSafe vs existing trackers</h3>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th></th><th>Existing trackers</th><th>PetSafe Buddy</th></tr></thead>
-        <tbody>
-          <tr><td>Form factor</td><td>Ugly plastic box on collar</td><td><strong>Beloved toy — carried willingly</strong></td></tr>
-          <tr><td>Who it works for</td><td>Dogs only</td><td><strong>Dogs AND cats (no collar needed)</strong></td></tr>
-          <tr><td>Sensors</td><td>GPS only</td><td><strong>GPS + temperature + activity</strong></td></tr>
-          <tr><td>Price</td><td>RM 200–500 + subscription</td><td><strong>RM 129 one-time, optional RM 3/mo</strong></td></tr>
-          <tr><td>Battery</td><td>Drains fast</td><td><strong>7-day battery life</strong></td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <h2><span class="num">03</span>Pricing</h2>
-    <div class="grid grid-3">
-      <div class="card pricing"><div class="price">RM 129</div><div class="per">Small · cats &amp; small dogs</div><ul><li>6 cm, 80 g</li><li>GPS + temp + motion</li><li>7-day battery</li></ul></div>
-      <div class="card pricing popular"><span class="tag">Most popular</span><div class="price">RM 149</div><div class="per">Medium · medium dogs</div><ul><li>9 cm, 150 g</li><li>GPS + temp + motion</li><li>7-day battery</li></ul></div>
-      <div class="card pricing"><div class="price">RM 179</div><div class="per">Large · big dogs</div><ul><li>13 cm, 250 g</li><li>GPS + temp + motion</li><li>7-day battery</li></ul></div>
-    </div>
-    <p class="lead">Replacement silicone shell RM 29. Subscriptions: Basic RM 3/month (location history), Family RM 8/month (unlimited history, heat alerts, activity reports). Lost Pet Alert Network is free with every Buddy.</p>
-
-    <h2><span class="num">04</span>Year 1 Financials</h2>
-    <div class="grid grid-3">
-      <div class="card stat"><div class="big">1,300</div><div class="small">units sold in Year 1</div></div>
-      <div class="card stat"><div class="big">RM 202,250</div><div class="small">total revenue</div></div>
-      <div class="card stat"><div class="big">RM 72,466</div><div class="small">Year 1 profit</div></div>
-    </div>
-    <p class="lead">Unit economics: weighted average price RM 152, cost RM 100, margin 34%. Startup RM 12,600 covers prototype, first 50 units, app MVP, and vet partnerships. Breakeven in month 4.</p>
-
-    <h2><span class="num">05</span>Why It Wins</h2>
-    <div class="grid grid-2">
-      <div class="card"><h4>Emotional hook</h4><p>Every Malaysian knows someone whose pet went missing.</p></div>
-      <div class="card"><h4>The squeak</h4><p>That toy squeak on stage is unforgettable.</p></div>
-      <div class="card"><h4>Cats are underserved</h4><p>Nobody makes trackers for cats. This does.</p></div>
-      <div class="card"><h4>Heat angle</h4><p>Uniquely relevant to Malaysia — US products don't think about 35°C heat.</p></div>
-    </div>
-
-    <h2><span class="num">06</span>The Pitch</h2>
-    <blockquote>"Last year my neighbour's cat Oyen went missing for five days. My mom worries about our dog Milo for eight hours straight every day. So I thought — what if a tracker was something pets actually LOVE? [squeeze — squeak!] A GPS collar is a tracker. PetSafe Buddy is peace of mind, wrapped in a toy. Help me make sure no family ever has to post 'tolong cari kucing saya' again."</blockquote>
-
-    <h2><span class="num">07</span>Shark Q&amp;A</h2>
-    <details><summary>What if the pet chews through the toy?</summary><div class="ans">The electronics are sealed in a separate waterproof hard capsule — the pet can't reach them. If the shell gets chewed, replacement shells cost RM 29 and the tracker moves into a fresh toy in 30 seconds.</div></details>
-    <details><summary>How is this different from an AirTag?</summary><div class="ans">AirTags have no temperature sensor, rely on other people's iPhones being nearby (which fails in a taman), and aren't toys — pets won't carry them. Buddy uses real GPS that works anywhere, and pets carry it because it's fun.</div></details>
-    <details><summary>What if GPS is weak indoors?</summary><div class="ans">Buddy also has WiFi positioning — near your home WiFi, the app knows the pet is inside. If WiFi drops AND GPS shows movement, that triggers an alert.</div></details>
-    <details><summary>Is it safe to chew? What about battery leaks?</summary><div class="ans">The battery is sealed inside the bite-resistant capsule. The shell is BPA-free, food-grade silicone — the same material as baby teething toys.</div></details>
-
-  </section>
-
-  <!-- ============ COMPARE ============ -->
-  <section class="pane" id="pane-compare">
-
-    <div class="hero" style="padding:48px 20px 32px;">
-      <span class="eyebrow">Overview</span>
-      <h1 style="font-size:clamp(36px,7vw,60px);">Three ideas. One founder.</h1>
-      <p class="tagline">Business plans comparison — Semenyih, Malaysia · July 2026 · 11-year-old entrepreneur.</p>
-    </div>
-
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th></th><th>Seminit</th><th>Stop &amp; Eat</th><th>PetSafe Buddy</th></tr></thead>
-        <tbody>
-          <tr><td><strong>Startup cost</strong></td><td class="num">RM 4,800</td><td class="num">RM 22,100</td><td class="num">RM 12,600</td></tr>
-          <tr><td><strong>Year 1 revenue</strong></td><td class="num">RM 45,210</td><td class="num">RM 200,060</td><td class="num">RM 202,250</td></tr>
-          <tr><td><strong>Year 1 profit</strong></td><td class="num">RM 3,960</td><td class="num">RM 130,660</td><td class="num">RM 72,466</td></tr>
-          <tr><td><strong>Breakeven</strong></td><td class="num">~8 months</td><td class="num">~2.5 months</td><td class="num">~4 months</td></tr>
-          <tr><td><strong>Profit margin</strong></td><td class="num">21–34%</td><td class="num">58–73% / meal</td><td class="num">33–36%</td></tr>
-          <tr><td><strong>Scalability</strong></td><td>Moderate</td><td>High (more trucks)</td><td>High (nationwide)</td></tr>
-          <tr><td><strong>Demo factor</strong></td><td>Pour water!</td><td>EAT on stage</td><td>Squeak!</td></tr>
-          <tr><td><strong>Emotional hook</strong></td><td>Flood safety</td><td>Climate + culture</td><td>Lost pets</td></tr>
-          <tr><td><strong>Recurring revenue</strong></td><td>RM 3–8/month</td><td>Loyalty + repeat</td><td>RM 3–8/month</td></tr>
-          <tr><td><strong>Competition</strong></td><td>None locally</td><td>Many, none eco</td><td>Some collars, none toy-form</td></tr>
-          <tr><td><strong>The ask</strong></td><td class="num"><strong>RM 5,000 / 15%</strong></td><td class="num"><strong>RM 22,000 / 20%</strong></td><td class="num"><strong>RM 12,600 / 15%</strong></td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <h2>Which idea wins?</h2>
-    <div class="grid grid-3">
-      <div class="card"><h4><span class="badge green">Most investable</span></h4><h3 style="margin-top:10px;">Stop &amp; Eat</h3><p>Fastest breakeven (2.5 months), highest Year 1 profit (RM 130K), clearest demand — people already buy food. You can bring actual samples. Perfect for Malaysian culture.</p></div>
-      <div class="card"><h4><span class="badge cyan">Most innovative</span></h4><h3 style="margin-top:10px;">Seminit</h3><p>Solves a genuine local gap nobody addresses. Appeals to technical judges, lower startup cost, and opens government and school partnerships.</p></div>
-      <div class="card"><h4><span class="badge amber">Most emotional</span></h4><h3 style="margin-top:10px;">PetSafe Buddy</h3><p>Everyone knows a lost-pet story. The squeak is unforgettable, cats are underserved, and the heat sensor is uniquely Malaysian.</p></div>
-    </div>
-
-    <h2>The recommendation</h2>
-    <blockquote><strong>Lead pitch: Stop &amp; Eat</strong> — the most complete package, with food samples and the strongest numbers. <strong>Backup in Q&amp;A: Seminit</strong> — shows you solve different kinds of problems. <strong>Third: PetSafe Buddy</strong> — save it for its own moment.</blockquote>
-
-    <h2>Suggested pitch order</h2>
-    <ol class="steps">
-      <li>Stop &amp; Eat — to win on business strength and memorability</li>
-      <li>PetSafe Buddy — to win on emotional impact</li>
-      <li>Seminit — to win on pure innovation</li>
-    </ol>
-
-  </section>
-
   <div class="footer">
     Seminit &amp; Junior Shark Tank plans · Semenyih, Selangor, Malaysia · July 2026<br>
     Built for an 11-year-old entrepreneur.
@@ -692,19 +416,7 @@
 
 </main>
 
-<script>
-  const tabs = document.querySelectorAll('.tab');
-  const panes = document.querySelectorAll('.pane');
-  tabs.forEach(t => {
-    t.addEventListener('click', () => {
-      tabs.forEach(x => x.classList.remove('active'));
-      panes.forEach(p => p.classList.remove('active'));
-      t.classList.add('active');
-      document.getElementById('pane-' + t.dataset.tab).classList.add('active');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-  });
-</script>
+
 
 </body>
 </html>
