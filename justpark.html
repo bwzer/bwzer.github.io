@@ -93,6 +93,7 @@
   .ph-screen {
     background: #0d120f; border-radius: 24px; overflow: hidden;
     border: 1px solid rgba(255,255,255,0.06);
+    height: 840px; display: flex; flex-direction: column;
   }
   .ph-status {
     display: flex; justify-content: space-between; align-items: center;
@@ -121,14 +122,14 @@
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.8} }
 
   /* map */
-  .ph-map { padding: 4px 12px 12px; }
-  .map-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-  .zone { border-radius: 10px; padding: 8px; border: 1px solid rgba(255,255,255,0.07); }
+  .ph-map { padding: 4px 12px 12px; flex: 1 1 auto; display: flex; flex-direction: column; }
+  .map-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; flex: 1 1 auto; }
+  .zone { border-radius: 10px; padding: 8px; border: 1px solid rgba(255,255,255,0.07); display: flex; flex-direction: column; }
   .zone .z-head { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 6px; }
   .zone .z-head b { color: #fff; }
-  .zone .spots { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
+  .zone .spots { display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(4, 1fr); gap: 5px; flex: 1 1 auto; }
   .spot {
-    aspect-ratio: 1; border-radius: 6px; position: relative;
+    border-radius: 6px; position: relative;
     background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
     transition: all 0.2s ease; cursor: pointer;
   }
