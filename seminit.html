@@ -1,1 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seminit — Junior Shark Tank</title>
+<style>
+  :root {
+    --bg: #0a0f1a;
+    --panel: #111827;
+    --panel2: #16213e;
+    --border: rgba(255,255,255,0.08);
+    --text: #e6edf3;
+    --muted: #7b9eb3;
+    --cyan: #00d2ff;
+    --blue: #3a7bd5;
+    --red: #e94560;
+    --green: #00ff88;
+    --amber: #ffb347;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--cyan); text-decoration: none; }
+  a:hover { text-decoration: underline; }
 
+  /* Top nav */
+  .topnav {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; gap: 4px;
+    background: rgba(10,15,26,0.9);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 20px;
+    flex-wrap: wrap;
+  }
+  .brand {
+    font-weight: 800; font-size: 17px; letter-spacing: 0.3px;
+    margin-right: auto;
+    background: linear-gradient(135deg, var(--cyan), var(--blue));
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+  }
+  .tab {
+    background: transparent; border: 1px solid transparent;
+    color: var(--muted); font-size: 13px; font-weight: 600;
+    padding: 7px 14px; border-radius: 999px; cursor: pointer;
+    transition: all 0.15s ease; font-family: inherit;
+  }
+  .tab:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+  .tab.active {
+    color: var(--cyan); background: rgba(0,210,255,0.10);
+    border-color: rgba(0,210,255,0.25);
+  }
+
+  main { max-width: 1080px; margin: 0 auto; padding: 0 20px 80px; }
+  section.pane { display: none; animation: fade 0.25s ease; }
+  section.pane.active { display: block; }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  /* Hero */
+  .hero {
+    text-align: center; padding: 72px 20px 48px;
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ""; position: absolute; inset: 0; z-index: -1;
+    background:
+      radial-gradient(600px 300px at 50% -10%, rgba(0,210,255,0.18), transparent 60%),
+      radial-gradient(500px 300px at 80% 10%, rgba(58,123,213,0.15), transparent 60%);
+  }
+  .eyebrow {
+    display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--cyan);
+    border: 1px solid rgba(0,210,255,0.3); border-radius: 999px;
+    padding: 5px 14px; margin-bottom: 20px;
+  }
+  .hero h1 {
+    font-size: clamp(44px, 8vw, 80px); font-weight: 800; line-height: 1.05;
+    background: linear-gradient(135deg, #ffffff, var(--cyan) 60%, var(--blue));
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+  }
+  .hero .tagline { font-size: 20px; color: var(--muted); margin-top: 12px; }
+  .hero .vision {
+    margin: 26px auto 0; max-width: 640px; font-size: 16px; font-style: italic;
+    color: var(--text); opacity: 0.9;
+    border-left: 3px solid var(--cyan); padding-left: 16px; text-align: left;
+  }
+  .ask-badge {
+    display: inline-flex; gap: 10px; align-items: center;
+    margin-top: 30px; padding: 14px 22px;
+    background: linear-gradient(135deg, rgba(0,210,255,0.14), rgba(58,123,213,0.14));
+    border: 1px solid rgba(0,210,255,0.3); border-radius: 14px;
+  }
+  .ask-badge .amount { font-size: 26px; font-weight: 800; color: var(--cyan); }
+  .ask-badge .label { font-size: 13px; color: var(--muted); text-align: left; line-height: 1.3; }
+
+  /* Sections */
+  h2 { font-size: 30px; font-weight: 800; margin: 48px 0 6px; }
+  h2 .num { color: var(--cyan); opacity: 0.7; font-size: 18px; margin-right: 8px; }
+  h3 { font-size: 19px; font-weight: 700; margin: 28px 0 10px; color: #fff; }
+  p.lead { color: var(--muted); font-size: 15px; max-width: 760px; margin-bottom: 20px; }
+  .section-head { margin-top: 40px; }
+
+  /* Cards / grids */
+  .grid { display: grid; gap: 16px; }
+  .grid-2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .grid-3 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px;
+  }
+  .card h4 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+  .card p { color: var(--muted); font-size: 13.5px; }
+  .card .accent { color: var(--cyan); font-weight: 700; }
+
+  /* Stat cards */
+  .stat { text-align: center; padding: 22px 16px; }
+  .stat .big { font-size: 30px; font-weight: 800; color: var(--cyan); }
+  .stat .small { font-size: 12px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* Tables */
+  .table-wrap { overflow-x: auto; margin: 16px 0; border: 1px solid var(--border); border-radius: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 480px; }
+  th, td { padding: 11px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+  th {
+    background: var(--panel2); color: var(--cyan); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.7px; font-weight: 700;
+  }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: rgba(255,255,255,0.02); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td strong { color: #fff; }
+
+  /* Blockquote */
+  blockquote {
+    margin: 16px 0; padding: 14px 18px;
+    background: rgba(0,210,255,0.05); border-left: 3px solid var(--cyan);
+    border-radius: 0 10px 10px 0; color: var(--text); font-style: italic; font-size: 15px;
+  }
+
+  /* Badges */
+  .badge {
+    display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+    padding: 3px 10px; border-radius: 999px; text-transform: uppercase;
+  }
+  .badge.cyan { background: rgba(0,210,255,0.15); color: var(--cyan); }
+  .badge.green { background: rgba(0,255,136,0.15); color: var(--green); }
+  .badge.red { background: rgba(233,69,96,0.15); color: var(--red); }
+  .badge.amber { background: rgba(255,179,71,0.15); color: var(--amber); }
+
+  /* Pricing cards */
+  .pricing { position: relative; }
+  .pricing.popular { border-color: rgba(0,210,255,0.45); box-shadow: 0 0 0 1px rgba(0,210,255,0.2), 0 8px 40px rgba(0,210,255,0.08); }
+  .pricing .price { font-size: 30px; font-weight: 800; }
+  .pricing .per { color: var(--muted); font-size: 12px; }
+  .pricing ul { list-style: none; margin-top: 12px; }
+  .pricing li { padding: 5px 0; color: var(--muted); font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .pricing li:last-child { border-bottom: none; }
+  .pricing li::before { content: "✓ "; color: var(--green); font-weight: 700; }
+  .pricing .tag {
+    position: absolute; top: -11px; left: 50%; transform: translateX(-50%);
+    background: var(--cyan); color: #04121f; font-size: 10px; font-weight: 800;
+    letter-spacing: 1px; text-transform: uppercase; padding: 3px 12px; border-radius: 999px;
+  }
+
+  /* Phone mockup */
+  .phone-demo {
+    display: flex; gap: 24px; align-items: center; flex-wrap: wrap;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 18px; padding: 28px;
+  }
+  .phone {
+    width: 240px; margin: 0 auto;
+    background: linear-gradient(180deg, #0f3460, #16213e 45%, #1a1a2e);
+    border-radius: 30px; padding: 16px; position: relative;
+    box-shadow: 0 0 0 6px #1a1a2e, 0 0 0 8px #2a2a3a, 0 24px 60px rgba(0,0,0,0.5);
+  }
+  .phone .ph-head { display: flex; justify-content: space-between; align-items: center; color: #fff; margin-bottom: 10px; }
+  .phone .ph-head .ttl { font-weight: 700; font-size: 15px; background: linear-gradient(135deg, #00d2ff, #3a7bd5); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
+  .phone .ph-head .loc { font-size: 10px; color: #8ecae6; }
+  .phone .alert {
+    background: linear-gradient(135deg, #e94560, #c23152); border-radius: 12px;
+    padding: 10px 12px; margin-bottom: 12px; color: #fff; animation: pulse 2s infinite;
+  }
+  .phone .alert .a-t { font-size: 11px; font-weight: 700; }
+  .phone .alert .a-s { font-size: 9px; opacity: 0.85; margin-top: 2px; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.82} }
+  .phone .temp { text-align: center; color: #fff; margin-bottom: 12px; }
+  .phone .temp .t { font-size: 46px; font-weight: 200; line-height: 1; }
+  .phone .temp .c { font-size: 11px; color: #8ecae6; }
+  .phone .sgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .phone .s {
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px; padding: 10px; color: #fff;
+  }
+  .phone .s .l { font-size: 8px; text-transform: uppercase; letter-spacing: 0.4px; color: #7b9eb3; }
+  .phone .s .v { font-size: 20px; font-weight: 700; }
+  .phone .s .u { font-size: 10px; color: #7b9eb3; }
+  .phone .live { display: flex; align-items: center; gap: 5px; justify-content: center; margin-top: 10px; font-size: 9px; color: #00ff88; }
+  .phone .live .dot { width: 6px; height: 6px; background: #00ff88; border-radius: 50%; animation: blink 1.5s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* Bars */
+  .bar-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+  .bar-row .lbl { width: 120px; font-size: 12px; color: var(--muted); text-align: right; flex-shrink: 0; }
+  .bar-row .track { flex: 1; height: 10px; background: rgba(255,255,255,0.06); border-radius: 6px; overflow: hidden; }
+  .bar-row .fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--cyan), var(--blue)); }
+
+  /* Steps */
+  ol.steps { margin: 12px 0 0 4px; padding-left: 4px; list-style: none; counter-reset: step; }
+  ol.steps li {
+    counter-increment: step; position: relative; padding: 10px 0 10px 44px;
+    color: var(--text); font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  ol.steps li:last-child { border-bottom: none; }
+  ol.steps li::before {
+    content: counter(step); position: absolute; left: 0; top: 8px;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: rgba(0,210,255,0.12); border: 1px solid rgba(0,210,255,0.3);
+    color: var(--cyan); font-weight: 700; font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* Q&A */
+  details { margin: 10px 0; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  details summary {
+    padding: 14px 18px; cursor: pointer; font-weight: 600; font-size: 14px;
+    list-style: none; position: relative; color: #fff;
+  }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::after { content: "+"; position: absolute; right: 18px; color: var(--cyan); font-weight: 700; }
+  details[open] summary::after { content: "−"; }
+  details .ans { padding: 0 18px 16px; color: var(--muted); font-size: 13.5px; }
+
+  .footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--border); }
+  .mono { font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <span class="brand">SEMINIT · Junior Shark Tank</span>
+  <button class="tab active" data-tab="seminit">Seminit</button>
+  <button class="tab" data-tab="stopeat">Stop &amp; Eat</button>
+  <button class="tab" data-tab="petsafe">PetSafe Buddy</button>
+  <button class="tab" data-tab="compare">Compare</button>
+</nav>
+
+<main>
+
+  <!-- ============ HERO ============ -->
+  <div class="hero">
+    <span class="eyebrow">Junior Shark Tank · Semenyih, Malaysia · July 2026</span>
+    <h1>Seminit</h1>
+    <p class="tagline">Hyper-local weather for every street in Malaysia.</p>
+    <p class="vision">"Every Malaysian street deserves its own early warning system."</p>
+    <div class="ask-badge">
+      <span class="amount">RM 5,000</span>
+      <span class="label">for 15% equity<br>to build 20 demo units + the app</span>
+    </div>
+  </div>
+
+  <!-- ============ SEMINIT ============ -->
+  <section class="pane active" id="pane-seminit">
+
+    <div class="grid grid-3" style="margin-top:8px;">
+      <div class="card stat"><div class="big">30 km</div><div class="small">distance to nearest weather station (KLIA)</div></div>
+      <div class="card stat"><div class="big">7×</div><div class="small">Semenyih flooded in 2025 with zero warning</div></div>
+      <div class="card stat"><div class="big">60 sec</div><div class="small">between live weather updates</div></div>
+    </div>
+
+    <h2><span class="num">01</span>The Problem</h2>
+    <p class="lead">Malaysia has only ~200 official weather stations. The nearest to Semenyih is at KLIA — 30 km away. A regional forecast cannot tell you when your street is about to flood.</p>
+    <div class="grid grid-2">
+      <div class="card"><h4>A thunderstorm can flood a taman in 20 minutes</h4><p>Families get zero warning. Last year Semenyih flooded seven times.</p></div>
+      <div class="card"><h4>Farmers guess when to harvest</h4><p>One wrong decision costs RM 500–1,000 in lost crops.</p></div>
+      <div class="card"><h4>Schools need real wind data</h4><p>Outdoor sports safety and STEM lessons both need it.</p></div>
+      <div class="card"><h4>The app says "partly cloudy"</h4><p>MetMalaysia gives a regional forecast — not your street.</p></div>
+    </div>
+    <blockquote>The gap: hyper-local, affordable weather monitoring for Malaysian communities doesn't exist yet.</blockquote>
+
+    <h2><span class="num">02</span>The Product</h2>
+    <p class="lead"><strong>Seminit</strong> ("se-minit" = one minute in Malay) is a solar-powered mini weather station that sits on your roof and gives minute-by-minute weather for your exact location.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Sensor</th><th>What it measures</th><th>Why it matters</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Anemometer</strong></td><td>Wind speed (km/h)</td><td>Storm warnings, outdoor events, sports safety</td></tr>
+          <tr><td><strong>Rain gauge</strong></td><td>Rainfall (mm)</td><td>Flood alerts, farm irrigation</td></tr>
+          <tr><td><strong>DHT22</strong></td><td>Temperature &amp; humidity</td><td>Heatwave alerts, comfort monitoring</td></tr>
+          <tr><td><strong>BMP280</strong></td><td>Atmospheric pressure</td><td>Predicts rain before it starts — a pressure drop means rain is coming</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>How it works</h3>
+    <ol class="steps">
+      <li>The station sits on your roof or garden — the solar panel keeps it running 24/7 with a 3-day battery backup.</li>
+      <li>It connects over WiFi and sends data to the cloud every minute.</li>
+      <li>Open the Seminit app on your phone to see live weather for YOUR street.</li>
+      <li>Get alerts: "Heavy rain expected in 30 minutes" / "Temperature above 35°C — heatwave alert."</li>
+    </ol>
+
+    <h2><span class="num">03</span>The App</h2>
+    <div class="phone-demo">
+      <div class="phone">
+        <div class="ph-head">
+          <span class="ttl">Seminit</span>
+          <span class="loc">Taman Semenyih Mewah</span>
+        </div>
+        <div class="alert">
+          <div class="a-t">Heavy Rain Warning</div>
+          <div class="a-s">Pressure dropping 3.2 hPa — rain in 30 min</div>
+        </div>
+        <div class="temp">
+          <div class="t">32°</div>
+          <div class="c">Thunderstorm approaching · H:34° L:26°</div>
+        </div>
+        <div class="sgrid">
+          <div class="s"><div class="l">Wind</div><div class="v">12.4 <span class="u">km/h</span></div></div>
+          <div class="s"><div class="l">Rain</div><div class="v">4.2 <span class="u">mm</span></div></div>
+          <div class="s"><div class="l">Humidity</div><div class="v">78<span class="u">%</span></div></div>
+          <div class="s"><div class="l">Pressure</div><div class="v">1008.2 <span class="u">hPa</span></div></div>
+        </div>
+        <div class="live"><span class="dot"></span> Live data · Updated just now</div>
+      </div>
+      <div style="flex:1;min-width:260px;">
+        <h3 style="margin-top:0;">A personal early warning system</h3>
+        <p class="lead" style="margin-bottom:10px;">Five sensors on one solar-powered station — no batteries to change, no maintenance, no wires.</p>
+        <ul style="list-style:none;color:var(--muted);font-size:14px;">
+          <li style="padding:6px 0;"><span style="color:var(--green);font-weight:700;">✓</span> Live dashboard — updates every 60 seconds</li>
+          <li style="padding:6px 0;"><span style="color:var(--green);font-weight:700;">✓</span> Push alerts: heavy rain, extreme heat</li>
+          <li style="padding:6px 0;"><span style="color:var(--green);font-weight:700;">✓</span> Rain prediction from pressure drops (~85% accuracy)</li>
+          <li style="padding:6px 0;"><span style="color:var(--green);font-weight:700;">✓</span> 24-hour onboard storage — works if WiFi fails</li>
+          <li style="padding:6px 0;"><span style="color:var(--green);font-weight:700;">✓</span> Storm radar: watch storms move toward your neighbourhood</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2><span class="num">04</span>Who Will Buy This</h2>
+    <div class="grid grid-2">
+      <div class="card"><h4>Farmers &amp; plantations</h4><p>50+ small farms around Semenyih. Need to know when to harvest, water, and protect crops.</p></div>
+      <div class="card"><h4>Schools (STEM + sports)</h4><p>20+ schools. Science clubs for projects, PE teachers for outdoor safety.</p></div>
+      <div class="card"><h4>Housing communities</h4><p>50+ taman neighbourhoods. WhatsApp groups use it for flood alerts.</p></div>
+      <div class="card"><h4>Outdoor event planners</h4><p>30+ local businesses need accurate venue forecasts for weddings and events.</p></div>
+    </div>
+
+    <h2><span class="num">05</span>Pricing</h2>
+    <div class="grid grid-3">
+      <div class="card pricing">
+        <div class="price">RM 299</div><div class="per">one-time · Seminit Basic</div>
+        <ul>
+          <li>5 sensors + solar</li>
+          <li>Free app + alerts</li>
+          <li>For families &amp; communities</li>
+          <li>Margin RM 64 (21%)</li>
+        </ul>
+      </div>
+      <div class="card pricing popular">
+        <span class="tag">Most popular</span>
+        <div class="price">RM 449</div><div class="per">one-time · Seminit Pro</div>
+        <ul>
+          <li>Everything in Basic</li>
+          <li>+ soil moisture sensor</li>
+          <li>For farmers &amp; growers</li>
+          <li>Margin RM 114 (25%)</li>
+        </ul>
+      </div>
+      <div class="card pricing">
+        <div class="price">RM 1,200</div><div class="per">one-time · School 5-pack</div>
+        <ul>
+          <li>RM 240 per unit</li>
+          <li>STEM education</li>
+          <li>Loss leader — builds trust</li>
+          <li>Creates future home buyers</li>
+        </ul>
+      </div>
+    </div>
+    <h3>Subscriptions (recurring)</h3>
+    <div class="grid grid-2">
+      <div class="card"><h4>RM 3/month <span class="badge cyan">Basic</span></h4><p>Unlimited alerts, 30-day history, monthly reports, multi-user sharing. Less than a cup of teh tarik.</p></div>
+      <div class="card"><h4>RM 8/month <span class="badge green">Pro</span></h4><p>Soil moisture analytics and irrigation recommendations for farmers. Saves RM 800/year in avoided crop loss.</p></div>
+    </div>
+    <blockquote>The anchor is not RM 299 vs free apps. It's RM 299 vs RM 800–5,000 — the cost of being wrong.</blockquote>
+
+    <h2><span class="num">06</span>Year 1 Financials</h2>
+    <div class="grid grid-3">
+      <div class="card stat"><div class="big">RM 45,210</div><div class="small">Year 1 revenue (150 units + subs)</div></div>
+      <div class="card stat"><div class="big">RM 3,960</div><div class="small">Year 1 net profit</div></div>
+      <div class="card stat"><div class="big">~8 mo</div><div class="small">time to breakeven</div></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Item</th><th class="num">Amount (RM)</th></tr></thead>
+        <tbody>
+          <tr><td>Revenue (150 units × ~RM 299 + subscriptions)</td><td class="num">45,210</td></tr>
+          <tr><td>Unit costs (150 × RM 235)</td><td class="num">(35,250)</td></tr>
+          <tr><td>Startup costs</td><td class="num">(4,800)</td></tr>
+          <tr><td>Server &amp; operations (12 months)</td><td class="num">(1,200)</td></tr>
+          <tr><td><strong>Net profit Year 1</strong></td><td class="num"><strong>RM 3,960</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="lead">Unit economics: cost RM 235, price RM 299, margin RM 64 (21%). At 500+ units materials drop to RM 190 and margin grows to 33%. LTV RM 407 vs CAC RM 25 — a 16:1 ratio.</p>
+
+    <h2><span class="num">07</span>Why It Wins</h2>
+    <div class="grid grid-2">
+      <div class="card"><h4>Real local problem</h4><p>Semenyih actually floods. This isn't imaginary.</p></div>
+      <div class="card"><h4>Demo-able</h4><p>Pour water on the rain gauge live on stage and watch the app update.</p></div>
+      <div class="card"><h4>Recurring revenue</h4><p>Hardware + subscription = a sustainable, growing business.</p></div>
+      <div class="card"><h4>Data network moat</h4><p>Every station deployed makes the prediction better for every other station.</p></div>
+      <div class="card"><h4>Made in Semenyih</h4><p>"Built in Semenyih, for Malaysians" — an authentic brand story.</p></div>
+      <div class="card"><h4>Climate + STEM angle</h4><p>Judges love youth climate innovation, and schools are a built-in customer.</p></div>
+    </div>
+
+    <h2><span class="num">08</span>The Ask</h2>
+    <div class="card" style="text-align:center;padding:32px;">
+      <div style="font-size:44px;font-weight:800;color:var(--cyan);">RM 5,000</div>
+      <div style="color:var(--muted);margin:4px 0 20px;">for 15% equity in Seminit</div>
+      <div class="grid grid-2" style="text-align:left;">
+        <div class="card"><h4>20 demo units for schools</h4><p>Free units to 5 schools and 3 community leaders — the seed of community-led growth.</p></div>
+        <div class="card"><h4>App MVP development</h4><p>Flutter app + Firebase backend, Android-first in 2 months.</p></div>
+        <div class="card"><h4>3D printer for casings</h4><p>Move casing production in-house.</p></div>
+        <div class="card"><h4>Marketing to 50+ communities</h4><p>WhatsApp groups, STEM fairs, TikTok storm videos.</p></div>
+      </div>
+    </div>
+
+    <h2><span class="num">09</span>The 3-Minute Pitch</h2>
+    <div class="grid grid-3">
+      <div class="card"><h4><span class="accent">Minute 1</span> · Hook + problem</h4><p>"It rained so hard my friend's house almost flooded. His parents had NO warning — the app said 'partly cloudy.' The nearest station is 30 km away."</p></div>
+      <div class="card"><h4><span class="accent">Minute 2</span> · Solution + demo</h4><p>"So I built THIS. Solar powered, no batteries. Wind, rain, temperature, pressure. When pressure drops, the app warns you BEFORE it rains."</p></div>
+      <div class="card"><h4><span class="accent">Minute 3</span> · Business + ask</h4><p>"RM 299 per station + RM 3/month subscription. I'm asking RM 5,000 for 15% to build 20 demo units and sell 150 units in Year 1."</p></div>
+    </div>
+
+    <h2><span class="num">10</span>Shark Q&amp;A</h2>
+    <details><summary>What if someone copies you?</summary><div class="ans">Good — that means it works. But I have a head start: 10 schools and 3 taman communities already in conversation, an app built for Malaysian weather, and I'm cheaper — big stations cost RM 10,000+, mine is RM 299.</div></details>
+    <details><summary>How accurate is it vs MetMalaysia?</summary><div class="ans">MetMalaysia's sensors cost RM 50,000 each and are built for national forecasting. For what matters to a family — "will it rain on MY street in the next hour?" — Seminit is just as good, with a pressure-drop algorithm that predicts rain at ~85% accuracy.</div></details>
+    <details><summary>What if the WiFi goes down?</summary><div class="ans">The station stores 24 hours of data onboard. When WiFi returns, it syncs everything. No data lost.</div></details>
+    <details><summary>How do you compete with free weather apps?</summary><div class="ans">Weather apps forecast "Hulu Langat" — 800 square kilometres. Seminit forecasts YOUR taman. The difference between "maybe rain today" and "you have 30 minutes to move your car to higher ground."</div></details>
+    <details><summary>Why would farmers pay when weather is free?</summary><div class="ans">Farmers already check the weather — and it's wrong for their specific location. One wrong decision costs hundreds of ringgit. RM 449 + RM 8/month to protect thousands of ringgit in crops is an easy yes.</div></details>
+
+  </section>
+
+  <!-- ============ STOP & EAT ============ -->
+  <section class="pane" id="pane-stopeat">
+
+    <div class="hero" style="padding:48px 20px 32px;">
+      <span class="eyebrow">Idea 2 · Junior Shark Tank</span>
+      <h1 style="font-size:clamp(36px,7vw,64px);">Stop &amp; Eat</h1>
+      <p class="tagline">Malaysia's first fully solar-powered, zero-waste food truck.</p>
+      <div class="ask-badge">
+        <span class="amount">RM 22,000</span>
+        <span class="label">for 20% equity<br>to buy the truck + solar + kitchen</span>
+      </div>
+    </div>
+
+    <div class="grid grid-3" style="margin-top:8px;">
+      <div class="card stat"><div class="big">RM 130,660</div><div class="small">Year 1 profit</div></div>
+      <div class="card stat"><div class="big">2.5 mo</div><div class="small">to breakeven (fastest)</div></div>
+      <div class="card stat"><div class="big">0</div><div class="small">single-use plastic items per day</div></div>
+    </div>
+
+    <h2><span class="num">01</span>The Problem</h2>
+    <p class="lead">Malaysia has a food truck boom — but trucks run diesel generators all day and use 200+ single-use plastic items daily. Young people want tasty food that doesn't destroy the planet.</p>
+    <div class="grid grid-2">
+      <div class="card"><h4>Diesel generators</h4><p>Loud, smelly, burning 3–5 litres a day right where people eat.</p></div>
+      <div class="card"><h4>Plastic waste</h4><p>6,000 pieces a month from a single truck going to landfill.</p></div>
+      <div class="card"><h4>Imported ingredients</h4><p>Food travels 200 km+ before reaching your plate.</p></div>
+      <div class="card"><h4>Climate guilt</h4><p>No "feel-good" food truck option exists. Not eco-boring — eco-AWESOME.</p></div>
+    </div>
+
+    <h2><span class="num">02</span>The Product</h2>
+    <div class="grid grid-2">
+      <div class="card"><h4>100% solar kitchen</h4><p>4 × 100W panels + lithium battery bank. Runs grill, fridge, blender, lights, POS. No generator, no noise, no fumes.</p></div>
+      <div class="card"><h4>Zero single-use plastic</h4><p>Banana leaf wraps, palm leaf plates, bamboo straws, paper cups. Everything compostable or reusable.</p></div>
+      <div class="card"><h4>Local farm-to-truck</h4><p>Ingredients within 10 km of Semenyih — Broga vegetables, Hulu Langat eggs, orchards off Jalan Bangi.</p></div>
+      <div class="card"><h4>Rotating menu</h4><p>Weekly menu follows what's fresh at local farms. Less waste, fresher food. BYOC gets RM 1 off.</p></div>
+    </div>
+
+    <h3>Signature menu (rotating)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Item</th><th class="num">Price (RM)</th><th>Eco-feature</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Nasi Lemak Solar</strong></td><td class="num">9</td><td>Banana leaf wrap, local chilli sambal</td></tr>
+          <tr><td><strong>Satay Langit</strong> (8 sticks)</td><td class="num">12</td><td>Bamboo skewers, paper cup sauce</td></tr>
+          <tr><td><strong>Roti John Hijau</strong></td><td class="num">8</td><td>Local eggs, compostable wrap</td></tr>
+          <tr><td><strong>Solar Smoothie Bowl</strong></td><td class="num">10</td><td>100% local fruit, blended on solar</td></tr>
+          <tr><td><strong>Nasi Goreng Kampung</strong></td><td class="num">8</td><td>Broga vegetables, palm leaf plate</td></tr>
+          <tr><td><strong>Sirap Limau Ais</strong></td><td class="num">3</td><td>Bamboo straw, paper cup</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2><span class="num">03</span>Business Model</h2>
+    <p class="lead">Operate 25 days a month, rotating locations around Semenyih — schools at lunch, night markets in the evening, Nottingham University on weekends. Average RM 610 revenue a day.</p>
+    <div class="grid grid-3">
+      <div class="card stat"><div class="big">85</div><div class="small">avg meals per day</div></div>
+      <div class="card stat"><div class="big">RM 610</div><div class="small">avg daily revenue</div></div>
+      <div class="card stat"><div class="big">64%</div><div class="small">weighted avg margin</div></div>
+    </div>
+    <blockquote>Every meal sold = one tree pledged for planting. 25,000 meals in Year 1 means 25,000 new trees.</blockquote>
+
+    <h2><span class="num">04</span>Year 1 Financials</h2>
+    <div class="grid grid-3">
+      <div class="card stat"><div class="big">RM 200,060</div><div class="small">Year 1 revenue</div></div>
+      <div class="card stat"><div class="big">RM 130,660</div><div class="small">Year 1 profit</div></div>
+      <div class="card stat"><div class="big">RM 22,100</div><div class="small">startup cost</div></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Startup breakdown</th><th class="num">Cost (RM)</th></tr></thead>
+        <tbody>
+          <tr><td>Used van + conversion</td><td class="num">12,000</td></tr>
+          <tr><td>Solar panels + charge controller</td><td class="num">2,000</td></tr>
+          <tr><td>Lithium battery bank + inverter</td><td class="num">3,600</td></tr>
+          <tr><td>Kitchen equipment</td><td class="num">2,200</td></tr>
+          <tr><td>Packaging, permits, branding, marketing</td><td class="num">2,300</td></tr>
+          <tr><td><strong>Total startup</strong></td><td class="num"><strong>RM 22,100</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="lead">Monthly: revenue RM 15,250 vs costs RM 5,700 = RM 9,550 monthly profit. The truck pays for itself in under 3 months.</p>
+
+    <h2><span class="num">05</span>Why It Wins</h2>
+    <div class="grid grid-2">
+      <div class="card"><h4>You can TASTE the pitch</h4><p>Bring samples. Let the sharks eat nasi lemak on a banana leaf.</p></div>
+      <div class="card"><h4>Climate + Malaysian culture</h4><p>Nasi lemak on banana leaf — not some foreign concept.</p></div>
+      <div class="card"><h4>Proven demand</h4><p>Food trucks are already popular. This just makes one greener.</p></div>
+      <div class="card"><h4>Scalable</h4><p>One truck proves it, then five across Selangor, then fifty.</p></div>
+    </div>
+
+    <h2><span class="num">06</span>The Pitch</h2>
+    <blockquote>"This banana leaf goes back to the earth in 14 days. This styrofoam? It stays for 500 years — longer than my grandchildren will live. I'm asking for RM 22,000 for a 20% stake to launch Malaysia's first zero-waste food truck. Sharks — who's hungry?"</blockquote>
+
+    <h2><span class="num">07</span>Shark Q&amp;A</h2>
+    <details><summary>What happens on cloudy or rainy days?</summary><div class="ans">Panels still generate 25–30% of normal power on cloudy days, and the battery bank stores 2 days of power. On rare 3+ day rain streaks there's a small backup charger. Malaysia gets 5–6 hours of strong sun almost daily.</div></details>
+    <details><summary>Why would teens pay RM 9 for nasi lemak when a stall charges RM 2?</summary><div class="ans">They're paying for an Instagram-worthy meal, the feel-good of supporting the environment, and a loyalty program with a free meal every 6th visit. Today's students care about climate.</div></details>
+    <details><summary>Can you really make RM 130,000 in Year 1?</summary><div class="ans">85 meals × RM 8.33 × 25 days = RM 17,700/month, minus RM 5,800 costs = ~RM 12,000/month. That's RM 144,000 — I said RM 130,000 to be conservative.</div></details>
+    <details><summary>What about food safety and permits?</summary><div class="ans">A food handling certificate (1-day course, RM 100) and a temporary stall license from MPKj. Parents handle cooking and financials; I'm the face of the brand.</div></details>
+
+  </section>
+
+  <!-- ============ PETSAFE BUDDY ============ -->
+  <section class="pane" id="pane-petsafe">
+
+    <div class="hero" style="padding:48px 20px 32px;">
+      <span class="eyebrow">Idea 3 · Junior Shark Tank</span>
+      <h1 style="font-size:clamp(36px,7vw,64px);">PetSafe Buddy</h1>
+      <p class="tagline">A chewable, throw-able, lovable toy with a secret safety superpower.</p>
+      <div class="ask-badge">
+        <span class="amount">RM 12,600</span>
+        <span class="label">for 15% equity<br>to build the first 50 units</span>
+      </div>
+    </div>
+
+    <div class="grid grid-3" style="margin-top:8px;">
+      <div class="card stat"><div class="big">RM 202,250</div><div class="small">Year 1 revenue</div></div>
+      <div class="card stat"><div class="big">RM 72,466</div><div class="small">Year 1 profit</div></div>
+      <div class="card stat"><div class="big">~4 mo</div><div class="small">to breakeven</div></div>
+    </div>
+
+    <h2><span class="num">01</span>The Problem</h2>
+    <p class="lead">Malaysian pet ownership is booming — but pets escape, overheat, and get lost. Existing trackers are ugly, expensive, dog-only GPS collars that pets hate wearing.</p>
+    <div class="grid grid-2">
+      <div class="card"><h4>Pets escape and get lost</h4><p>Thousands of "kucing hilang" posts on Malaysian Facebook groups every month.</p></div>
+      <div class="card"><h4>Heat danger</h4><p>34–36°C daily. A pet in a hot house can suffer heatstroke in under an hour.</p></div>
+      <div class="card"><h4>Current trackers are ugly + pricey</h4><p>GPS collars cost RM 200–500 and pets hate wearing bulky plastic boxes.</p></div>
+      <div class="card"><h4>Cats are underserved</h4><p>Collars fall off cats. Most tracking products are designed for dogs only.</p></div>
+    </div>
+
+    <h2><span class="num">02</span>The Product</h2>
+    <p class="lead"><strong>Outside:</strong> a fun, durable silicone toy — a bone (dogs), a fish (cats), a ball (everyone). It squeaks. It bounces. <strong>Inside:</strong> a tiny waterproof capsule with GPS, temperature, and motion sensors + a 7-day battery.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Alert</th><th>Trigger</th><th>What the owner gets</th></tr></thead>
+        <tbody>
+          <tr><td><strong>"Fence Breaker!"</strong></td><td>Pet leaves the safe zone</td><td>Instant notification with live GPS location</td></tr>
+          <tr><td><strong>"Too Hot!"</strong></td><td>Temperature around pet exceeds 32°C</td><td>Alert: "Buddy's environment is dangerously hot!"</td></tr>
+          <tr><td><strong>"Where's My Buddy?"</strong></td><td>Owner taps "Find My Pet"</td><td>Real-time GPS on a map</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>PetSafe vs existing trackers</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th></th><th>Existing trackers</th><th>PetSafe Buddy</th></tr></thead>
+        <tbody>
+          <tr><td>Form factor</td><td>Ugly plastic box on collar</td><td><strong>Beloved toy — carried willingly</strong></td></tr>
+          <tr><td>Who it works for</td><td>Dogs only</td><td><strong>Dogs AND cats (no collar needed)</strong></td></tr>
+          <tr><td>Sensors</td><td>GPS only</td><td><strong>GPS + temperature + activity</strong></td></tr>
+          <tr><td>Price</td><td>RM 200–500 + subscription</td><td><strong>RM 129 one-time, optional RM 3/mo</strong></td></tr>
+          <tr><td>Battery</td><td>Drains fast</td><td><strong>7-day battery life</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2><span class="num">03</span>Pricing</h2>
+    <div class="grid grid-3">
+      <div class="card pricing"><div class="price">RM 129</div><div class="per">Small · cats &amp; small dogs</div><ul><li>6 cm, 80 g</li><li>GPS + temp + motion</li><li>7-day battery</li></ul></div>
+      <div class="card pricing popular"><span class="tag">Most popular</span><div class="price">RM 149</div><div class="per">Medium · medium dogs</div><ul><li>9 cm, 150 g</li><li>GPS + temp + motion</li><li>7-day battery</li></ul></div>
+      <div class="card pricing"><div class="price">RM 179</div><div class="per">Large · big dogs</div><ul><li>13 cm, 250 g</li><li>GPS + temp + motion</li><li>7-day battery</li></ul></div>
+    </div>
+    <p class="lead">Replacement silicone shell RM 29. Subscriptions: Basic RM 3/month (location history), Family RM 8/month (unlimited history, heat alerts, activity reports). Lost Pet Alert Network is free with every Buddy.</p>
+
+    <h2><span class="num">04</span>Year 1 Financials</h2>
+    <div class="grid grid-3">
+      <div class="card stat"><div class="big">1,300</div><div class="small">units sold in Year 1</div></div>
+      <div class="card stat"><div class="big">RM 202,250</div><div class="small">total revenue</div></div>
+      <div class="card stat"><div class="big">RM 72,466</div><div class="small">Year 1 profit</div></div>
+    </div>
+    <p class="lead">Unit economics: weighted average price RM 152, cost RM 100, margin 34%. Startup RM 12,600 covers prototype, first 50 units, app MVP, and vet partnerships. Breakeven in month 4.</p>
+
+    <h2><span class="num">05</span>Why It Wins</h2>
+    <div class="grid grid-2">
+      <div class="card"><h4>Emotional hook</h4><p>Every Malaysian knows someone whose pet went missing.</p></div>
+      <div class="card"><h4>The squeak</h4><p>That toy squeak on stage is unforgettable.</p></div>
+      <div class="card"><h4>Cats are underserved</h4><p>Nobody makes trackers for cats. This does.</p></div>
+      <div class="card"><h4>Heat angle</h4><p>Uniquely relevant to Malaysia — US products don't think about 35°C heat.</p></div>
+    </div>
+
+    <h2><span class="num">06</span>The Pitch</h2>
+    <blockquote>"Last year my neighbour's cat Oyen went missing for five days. My mom worries about our dog Milo for eight hours straight every day. So I thought — what if a tracker was something pets actually LOVE? [squeeze — squeak!] A GPS collar is a tracker. PetSafe Buddy is peace of mind, wrapped in a toy. Help me make sure no family ever has to post 'tolong cari kucing saya' again."</blockquote>
+
+    <h2><span class="num">07</span>Shark Q&amp;A</h2>
+    <details><summary>What if the pet chews through the toy?</summary><div class="ans">The electronics are sealed in a separate waterproof hard capsule — the pet can't reach them. If the shell gets chewed, replacement shells cost RM 29 and the tracker moves into a fresh toy in 30 seconds.</div></details>
+    <details><summary>How is this different from an AirTag?</summary><div class="ans">AirTags have no temperature sensor, rely on other people's iPhones being nearby (which fails in a taman), and aren't toys — pets won't carry them. Buddy uses real GPS that works anywhere, and pets carry it because it's fun.</div></details>
+    <details><summary>What if GPS is weak indoors?</summary><div class="ans">Buddy also has WiFi positioning — near your home WiFi, the app knows the pet is inside. If WiFi drops AND GPS shows movement, that triggers an alert.</div></details>
+    <details><summary>Is it safe to chew? What about battery leaks?</summary><div class="ans">The battery is sealed inside the bite-resistant capsule. The shell is BPA-free, food-grade silicone — the same material as baby teething toys.</div></details>
+
+  </section>
+
+  <!-- ============ COMPARE ============ -->
+  <section class="pane" id="pane-compare">
+
+    <div class="hero" style="padding:48px 20px 32px;">
+      <span class="eyebrow">Overview</span>
+      <h1 style="font-size:clamp(36px,7vw,60px);">Three ideas. One founder.</h1>
+      <p class="tagline">Business plans comparison — Semenyih, Malaysia · July 2026 · 11-year-old entrepreneur.</p>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th></th><th>Seminit</th><th>Stop &amp; Eat</th><th>PetSafe Buddy</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Startup cost</strong></td><td class="num">RM 4,800</td><td class="num">RM 22,100</td><td class="num">RM 12,600</td></tr>
+          <tr><td><strong>Year 1 revenue</strong></td><td class="num">RM 45,210</td><td class="num">RM 200,060</td><td class="num">RM 202,250</td></tr>
+          <tr><td><strong>Year 1 profit</strong></td><td class="num">RM 3,960</td><td class="num">RM 130,660</td><td class="num">RM 72,466</td></tr>
+          <tr><td><strong>Breakeven</strong></td><td class="num">~8 months</td><td class="num">~2.5 months</td><td class="num">~4 months</td></tr>
+          <tr><td><strong>Profit margin</strong></td><td class="num">21–34%</td><td class="num">58–73% / meal</td><td class="num">33–36%</td></tr>
+          <tr><td><strong>Scalability</strong></td><td>Moderate</td><td>High (more trucks)</td><td>High (nationwide)</td></tr>
+          <tr><td><strong>Demo factor</strong></td><td>Pour water!</td><td>EAT on stage</td><td>Squeak!</td></tr>
+          <tr><td><strong>Emotional hook</strong></td><td>Flood safety</td><td>Climate + culture</td><td>Lost pets</td></tr>
+          <tr><td><strong>Recurring revenue</strong></td><td>RM 3–8/month</td><td>Loyalty + repeat</td><td>RM 3–8/month</td></tr>
+          <tr><td><strong>Competition</strong></td><td>None locally</td><td>Many, none eco</td><td>Some collars, none toy-form</td></tr>
+          <tr><td><strong>The ask</strong></td><td class="num"><strong>RM 5,000 / 15%</strong></td><td class="num"><strong>RM 22,000 / 20%</strong></td><td class="num"><strong>RM 12,600 / 15%</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Which idea wins?</h2>
+    <div class="grid grid-3">
+      <div class="card"><h4><span class="badge green">Most investable</span></h4><h3 style="margin-top:10px;">Stop &amp; Eat</h3><p>Fastest breakeven (2.5 months), highest Year 1 profit (RM 130K), clearest demand — people already buy food. You can bring actual samples. Perfect for Malaysian culture.</p></div>
+      <div class="card"><h4><span class="badge cyan">Most innovative</span></h4><h3 style="margin-top:10px;">Seminit</h3><p>Solves a genuine local gap nobody addresses. Appeals to technical judges, lower startup cost, and opens government and school partnerships.</p></div>
+      <div class="card"><h4><span class="badge amber">Most emotional</span></h4><h3 style="margin-top:10px;">PetSafe Buddy</h3><p>Everyone knows a lost-pet story. The squeak is unforgettable, cats are underserved, and the heat sensor is uniquely Malaysian.</p></div>
+    </div>
+
+    <h2>The recommendation</h2>
+    <blockquote><strong>Lead pitch: Stop &amp; Eat</strong> — the most complete package, with food samples and the strongest numbers. <strong>Backup in Q&amp;A: Seminit</strong> — shows you solve different kinds of problems. <strong>Third: PetSafe Buddy</strong> — save it for its own moment.</blockquote>
+
+    <h2>Suggested pitch order</h2>
+    <ol class="steps">
+      <li>Stop &amp; Eat — to win on business strength and memorability</li>
+      <li>PetSafe Buddy — to win on emotional impact</li>
+      <li>Seminit — to win on pure innovation</li>
+    </ol>
+
+  </section>
+
+  <div class="footer">
+    Seminit &amp; Junior Shark Tank plans · Semenyih, Selangor, Malaysia · July 2026<br>
+    Built for an 11-year-old entrepreneur.
+  </div>
+
+</main>
+
+<script>
+  const tabs = document.querySelectorAll('.tab');
+  const panes = document.querySelectorAll('.pane');
+  tabs.forEach(t => {
+    t.addEventListener('click', () => {
+      tabs.forEach(x => x.classList.remove('active'));
+      panes.forEach(p => p.classList.remove('active'));
+      t.classList.add('active');
+      document.getElementById('pane-' + t.dataset.tab).classList.add('active');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  });
+</script>
+
+</body>
+</html>
