@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Seminit — Junior Shark Tank</title>
+<title>Seminit</title>
 <style>
   :root {
     --bg: #0a0f1a;
@@ -60,21 +60,12 @@
     color: var(--text); opacity: 0.9;
     border-left: 3px solid var(--cyan); padding-left: 16px; text-align: left;
   }
-  .ask-badge {
-    display: inline-flex; gap: 10px; align-items: center;
-    margin-top: 30px; padding: 14px 22px;
-    background: linear-gradient(135deg, rgba(0,210,255,0.14), rgba(58,123,213,0.14));
-    border: 1px solid rgba(0,210,255,0.3); border-radius: 14px;
-  }
-  .ask-badge .amount { font-size: 26px; font-weight: 800; color: var(--cyan); }
-  .ask-badge .label { font-size: 13px; color: var(--muted); text-align: left; line-height: 1.3; }
 
   /* Sections */
   h2 { font-size: 30px; font-weight: 800; margin: 48px 0 6px; }
   h2 .num { color: var(--cyan); opacity: 0.7; font-size: 18px; margin-right: 8px; }
   h3 { font-size: 19px; font-weight: 700; margin: 28px 0 10px; color: #fff; }
   p.lead { color: var(--muted); font-size: 15px; max-width: 760px; margin-bottom: 20px; }
-  .section-head { margin-top: 40px; }
 
   /* Cards / grids */
   .grid { display: grid; gap: 16px; }
@@ -120,8 +111,6 @@
   }
   .badge.cyan { background: rgba(0,210,255,0.15); color: var(--cyan); }
   .badge.green { background: rgba(0,255,136,0.15); color: var(--green); }
-  .badge.red { background: rgba(233,69,96,0.15); color: var(--red); }
-  .badge.amber { background: rgba(255,179,71,0.15); color: var(--amber); }
 
   /* Pricing cards */
   .pricing { position: relative; }
@@ -174,12 +163,6 @@
   .phone .live .dot { width: 6px; height: 6px; background: #00ff88; border-radius: 50%; animation: blink 1.5s infinite; }
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
-  /* Bars */
-  .bar-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
-  .bar-row .lbl { width: 120px; font-size: 12px; color: var(--muted); text-align: right; flex-shrink: 0; }
-  .bar-row .track { flex: 1; height: 10px; background: rgba(255,255,255,0.06); border-radius: 6px; overflow: hidden; }
-  .bar-row .fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--cyan), var(--blue)); }
-
   /* Steps */
   ol.steps { margin: 12px 0 0 4px; padding-left: 4px; list-style: none; counter-reset: step; }
   ol.steps li {
@@ -195,7 +178,7 @@
     display: flex; align-items: center; justify-content: center;
   }
 
-  /* Q&A */
+  /* FAQ */
   details { margin: 10px 0; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
   details summary {
     padding: 14px 18px; cursor: pointer; font-weight: 600; font-size: 14px;
@@ -207,25 +190,18 @@
   details .ans { padding: 0 18px 16px; color: var(--muted); font-size: 13.5px; }
 
   .footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--border); }
-  .mono { font-variant-numeric: tabular-nums; }
 </style>
 </head>
 <body>
-
-
 
 <main>
 
   <!-- ============ HERO ============ -->
   <div class="hero">
-    <span class="eyebrow">Junior Shark Tank · Semenyih, Malaysia · July 2026</span>
+    <span class="eyebrow">Hyper-local weather · Semenyih, Malaysia</span>
     <h1>Seminit</h1>
     <p class="tagline">Hyper-local weather for every street in Malaysia.</p>
     <p class="vision">"Every Malaysian street deserves its own early warning system."</p>
-    <div class="ask-badge">
-      <span class="amount">RM 5,000</span>
-      <span class="label">for 15% equity<br>to build 20 demo units + the app</span>
-    </div>
   </div>
 
   <!-- ============ SEMINIT ============ -->
@@ -371,37 +347,18 @@
     </div>
     <p class="lead">Unit economics: cost RM 235, price RM 299, margin RM 64 (21%). At 500+ units materials drop to RM 190 and margin grows to 33%. LTV RM 407 vs CAC RM 25 — a 16:1 ratio.</p>
 
-    <h2><span class="num">07</span>Why It Wins</h2>
+    <h2><span class="num">07</span>Why Seminit</h2>
     <div class="grid grid-2">
       <div class="card"><h4>Real local problem</h4><p>Semenyih actually floods. This isn't imaginary.</p></div>
-      <div class="card"><h4>Demo-able</h4><p>Pour water on the rain gauge live on stage and watch the app update.</p></div>
+      <div class="card"><h4>Demo-able</h4><p>Pour water on the rain gauge and watch the app update.</p></div>
       <div class="card"><h4>Recurring revenue</h4><p>Hardware + subscription = a sustainable, growing business.</p></div>
       <div class="card"><h4>Data network moat</h4><p>Every station deployed makes the prediction better for every other station.</p></div>
       <div class="card"><h4>Made in Semenyih</h4><p>"Built in Semenyih, for Malaysians" — an authentic brand story.</p></div>
-      <div class="card"><h4>Climate + STEM angle</h4><p>Judges love youth climate innovation, and schools are a built-in customer.</p></div>
+      <div class="card"><h4>Climate + STEM angle</h4><p>Schools are a built-in customer, and climate innovation is a growing need.</p></div>
     </div>
 
-    <h2><span class="num">08</span>The Ask</h2>
-    <div class="card" style="text-align:center;padding:32px;">
-      <div style="font-size:44px;font-weight:800;color:var(--cyan);">RM 5,000</div>
-      <div style="color:var(--muted);margin:4px 0 20px;">for 15% equity in Seminit</div>
-      <div class="grid grid-2" style="text-align:left;">
-        <div class="card"><h4>20 demo units for schools</h4><p>Free units to 5 schools and 3 community leaders — the seed of community-led growth.</p></div>
-        <div class="card"><h4>App MVP development</h4><p>Flutter app + Firebase backend, Android-first in 2 months.</p></div>
-        <div class="card"><h4>3D printer for casings</h4><p>Move casing production in-house.</p></div>
-        <div class="card"><h4>Marketing to 50+ communities</h4><p>WhatsApp groups, STEM fairs, TikTok storm videos.</p></div>
-      </div>
-    </div>
-
-    <h2><span class="num">09</span>The 3-Minute Pitch</h2>
-    <div class="grid grid-3">
-      <div class="card"><h4><span class="accent">Minute 1</span> · Hook + problem</h4><p>"It rained so hard my friend's house almost flooded. His parents had NO warning — the app said 'partly cloudy.' The nearest station is 30 km away."</p></div>
-      <div class="card"><h4><span class="accent">Minute 2</span> · Solution + demo</h4><p>"So I built THIS. Solar powered, no batteries. Wind, rain, temperature, pressure. When pressure drops, the app warns you BEFORE it rains."</p></div>
-      <div class="card"><h4><span class="accent">Minute 3</span> · Business + ask</h4><p>"RM 299 per station + RM 3/month subscription. I'm asking RM 5,000 for 15% to build 20 demo units and sell 150 units in Year 1."</p></div>
-    </div>
-
-    <h2><span class="num">10</span>Shark Q&amp;A</h2>
-    <details><summary>What if someone copies you?</summary><div class="ans">Good — that means it works. But I have a head start: 10 schools and 3 taman communities already in conversation, an app built for Malaysian weather, and I'm cheaper — big stations cost RM 10,000+, mine is RM 299.</div></details>
+    <h2><span class="num">08</span>FAQ</h2>
+    <details><summary>What if someone copies you?</summary><div class="ans">Good — that means it works. But Seminit has a head start: 10 schools and 3 taman communities already in conversation, an app built for Malaysian weather, and a price point big stations can't touch — RM 299 vs RM 10,000+.</div></details>
     <details><summary>How accurate is it vs MetMalaysia?</summary><div class="ans">MetMalaysia's sensors cost RM 50,000 each and are built for national forecasting. For what matters to a family — "will it rain on MY street in the next hour?" — Seminit is just as good, with a pressure-drop algorithm that predicts rain at ~85% accuracy.</div></details>
     <details><summary>What if the WiFi goes down?</summary><div class="ans">The station stores 24 hours of data onboard. When WiFi returns, it syncs everything. No data lost.</div></details>
     <details><summary>How do you compete with free weather apps?</summary><div class="ans">Weather apps forecast "Hulu Langat" — 800 square kilometres. Seminit forecasts YOUR taman. The difference between "maybe rain today" and "you have 30 minutes to move your car to higher ground."</div></details>
@@ -410,13 +367,11 @@
   </section>
 
   <div class="footer">
-    Seminit &amp; Junior Shark Tank plans · Semenyih, Selangor, Malaysia · July 2026<br>
-    Built for an 11-year-old entrepreneur.
+    Seminit · Hyper-local weather for every street in Malaysia<br>
+    Semenyih, Selangor, Malaysia
   </div>
 
 </main>
-
-
 
 </body>
 </html>
