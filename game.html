@@ -33,7 +33,7 @@
             border: 1px solid #3a2b50;
             border-radius: 10px;
             padding: 18px 20px;
-            max-width: 320px;
+            max-width: 340px;
             font-size: 0.92rem;
             line-height: 1.5;
         }
@@ -57,17 +57,20 @@
     </style>
 </head>
 <body>
-    <h1>20x20 Grid Editor + Multi-run AI Learning</h1>
-    <p class="sub">Draw a maze, then watch a Q-learning agent learn to reach the finish.</p>
+    <h1 id="title">20x20 Grid Editor + Multi-run AI Learning</h1>
+    <p class="sub">Draw a maze, then watch a Q-learning agent learn to reach the finish. Collect the key to unlock locked doors.</p>
 
     <div class="wrap">
         <canvas id="game" width="600" height="600"></canvas>
         <div class="panel">
             <h2>Controls</h2>
             <ul>
+                <li>Startup: <kbd>&uarr;</kbd>/<kbd>&darr;</kbd>/<kbd>PgUp</kbd>/<kbd>PgDn</kbd>/<kbd>Enter</kbd> — set grid size (max 150x150)</li>
                 <li><kbd>1</kbd> — Editor mode</li>
                 <li><kbd>2</kbd> — Simulate (AI learns)</li>
                 <li><kbd>Click</kbd> a cell to cycle its tile</li>
+                <li>Place a key, then <kbd>click</kbd> a door to point the key at it</li>
+                <li><kbd>Esc</kbd> — cancel key pointing</li>
                 <li><kbd>&uarr;</kbd>/<kbd>&darr;</kbd>/<kbd>Enter</kbd> — set the time limit</li>
             </ul>
             <div class="legend">
@@ -77,6 +80,9 @@
                 <div><span style="background:#ff0000"></span>Obstacle</div>
                 <div><span style="background:#00ff00"></span>Finish</div>
                 <div><span style="background:#009696"></span>Spawn</div>
+                <div><span style="background:#8b4513"></span>Normal door</div>
+                <div><span style="background:#e65a00"></span>Locked door</div>
+                <div><span style="background:#ffc800"></span>Key</div>
                 <div><span style="background:#960096"></span>AI</div>
             </div>
         </div>
@@ -85,24 +91,49 @@
     <a class="back" href="index.html">&larr; Back to home</a>
 
     <script>
-        const CELL = 30, GRID = 20, WIDTH = CELL * GRID, HEIGHT = CELL * GRID, FPS = 10;
+        const FPS = 10;
+        const MIN_GRID = 3, MAX_GRID = 150;
 
-        const EMPTY = 0, WALL = 1, OBSTACLE = 2, FINISH = 3, SPAWN = 4;
-        const TILE_COLORS = ['#ffffff', '#969696', '#ff0000', '#00ff00', '#009696'];
+        const EMPTY = 0, WALL = 1, OBSTACLE = 2, FINISH = 3, SPAWN = 4, DOOR = 5, LOCKED = 6, KEY = 7;
+        const TILE_COLORS = ['#ffffff', '#969696', '#ff0000', '#00ff00', '#009696', '#8b4513', '#e65a00', '#ffc800'];
         const BLACK = '#000000', PURPLE = '#960096';
 
         const canvas = document.getElementById('game');
         const ctx = canvas.getContext('2d');
 
+        let GRID = 20;
+        let CELL = 30;
+        let WIDTH = CELL * GRID, HEIGHT = CELL * GRID;
+
         let grid = Array.from({ length: GRID }, () => Array(GRID).fill(EMPTY));
+        let Q = Array.from({ length: GRID }, () => Array.from({ length: GRID }, () => [0, 0, 0, 0]));
+
         let mode = 'editor';
         let aiPos = [0, 0];
-        // Q-table indexed as Q[x][y][action]
-        let Q = Array.from({ length: GRID }, () => Array.from({ length: GRID }, () => [0, 0, 0, 0]));
+        let hasKey = false;
+        let keyTargets = {};   // "x,y" -> [door_x, door_y]
+        let pendingKey = null; // [x, y] of a placed key awaiting a door target
+
         let epsilon = 0.2, alpha = 0.5, gamma = 0.9;
         let timeLimit = 20, episode = 1;
         let startTime = 0;
+        let startGrid = null;
+
+        let gridSizeSetting = 20;
+        let settingGrid = true;
         let asking = false;
+
+        function setGridSize(n) {
+            GRID = n;
+            CELL = (n * 30 <= 900) ? 30 : Math.max(4, Math.floor(900 / n));
+            WIDTH = CELL * n;
+            HEIGHT = CELL * n;
+            canvas.width = WIDTH;
+            canvas.height = HEIGHT;
+            grid = Array.from({ length: n }, () => Array(n).fill(EMPTY));
+            Q = Array.from({ length: n }, () => Array.from({ length: n }, () => [0, 0, 0, 0]));
+            document.getElementById('title').textContent = n + 'x' + n + ' Grid Editor + Multi-run AI Learning';
+        }
 
         function findTile(t) {
             for (let y = 0; y < GRID; y++)
@@ -119,6 +150,11 @@
             return best;
         }
 
+        function resetLevel() {
+            grid = startGrid.map(row => row.slice());
+            hasKey = false;
+        }
+
         function moveAI() {
             const finish = findTile(FINISH);
             if (!finish) return false;
@@ -130,9 +166,22 @@
             else if (action === 2) { if (x > 0) nx--; }
             else if (action === 3) { if (x < GRID - 1) nx++; }
             let reward = -0.05;
-            if (grid[ny][nx] === WALL || grid[ny][nx] === OBSTACLE) {
+            const target = grid[ny][nx];
+            if (target === WALL || target === OBSTACLE) {
                 reward = -1;
                 nx = x; ny = y;
+            } else if (target === LOCKED) {
+                if (hasKey) {
+                    reward = 5;
+                    grid[ny][nx] = DOOR;
+                } else {
+                    reward = -1;
+                    nx = x; ny = y;
+                }
+            } else if (target === KEY) {
+                reward = 5;
+                hasKey = true;
+                grid[ny][nx] = EMPTY;
             } else if (nx === finish[0] && ny === finish[1]) {
                 reward = 10;
             }
@@ -154,6 +203,29 @@
             }
         }
 
+        function drawEditorOverlays() {
+            if (pendingKey) {
+                ctx.strokeStyle = BLACK;
+                ctx.lineWidth = 3;
+                ctx.strokeRect(pendingKey[0] * CELL, pendingKey[1] * CELL, CELL, CELL);
+                ctx.lineWidth = 1;
+                ctx.fillStyle = BLACK;
+                ctx.font = '16px -apple-system, "Segoe UI", sans-serif';
+                ctx.fillText('Point the key: click a door to link it (Esc to cancel)', 10, 20);
+            }
+            for (const k in keyTargets) {
+                const [kx, ky] = k.split(',').map(Number);
+                const [dx, dy] = keyTargets[k];
+                ctx.strokeStyle = BLACK;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(kx * CELL + CELL / 2, ky * CELL + CELL / 2);
+                ctx.lineTo(dx * CELL + CELL / 2, dy * CELL + CELL / 2);
+                ctx.stroke();
+                ctx.lineWidth = 1;
+            }
+        }
+
         function drawSimulation() {
             ctx.fillStyle = PURPLE;
             ctx.fillRect(aiPos[0] * CELL, aiPos[1] * CELL, CELL, CELL);
@@ -161,6 +233,17 @@
             ctx.font = '24px -apple-system, "Segoe UI", sans-serif';
             ctx.fillText('Episode: ' + episode, 10, 26);
             ctx.fillText('Time Left: ' + Math.max(0, Math.floor(timeLimit)), 10, 56);
+            ctx.fillText('Has Key: ' + (hasKey ? 'Yes' : 'No'), 10, 86);
+        }
+
+        function drawGridPrompt() {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = BLACK;
+            ctx.font = '24px -apple-system, "Segoe UI", sans-serif';
+            ctx.fillText('Set Grid Size (max 150x150):', 50, 120);
+            ctx.fillText(gridSizeSetting + ' x ' + gridSizeSetting, 50, 170);
+            ctx.fillText('Up/Down +/-1   PgUp/PgDn +/-10   Enter to start', 50, 220);
         }
 
         function drawPrompt() {
@@ -176,12 +259,18 @@
             const spawn = findTile(SPAWN);
             if (spawn) {
                 aiPos = spawn.slice();
+                startGrid = grid.map(row => row.slice());
+                hasKey = false;
                 startTime = Date.now();
                 episode = 1;
             }
         }
 
         function tick() {
+            if (settingGrid) {
+                drawGridPrompt();
+                return;
+            }
             if (asking) {
                 drawPrompt();
                 return;
@@ -197,28 +286,49 @@
                     if (spawn) {
                         aiPos = spawn.slice();
                         startTime = Date.now();
+                        resetLevel();
                     }
                 }
+            } else {
+                drawEditorOverlays();
             }
         }
 
         canvas.addEventListener('mousedown', (e) => {
-            if (mode !== 'editor') return;
+            if (mode !== 'editor' || settingGrid) return;
             const rect = canvas.getBoundingClientRect();
             const mx = e.clientX - rect.left;
             const my = e.clientY - rect.top;
             const x = Math.floor(mx / CELL);
             const y = Math.floor(my / CELL);
             if (x < 0 || x >= GRID || y < 0 || y >= GRID) return;
+            if (pendingKey) {
+                if (grid[y][x] === DOOR || grid[y][x] === LOCKED) {
+                    keyTargets[pendingKey[0] + ',' + pendingKey[1]] = [x, y];
+                    pendingKey = null;
+                }
+                return;
+            }
             if (grid[y][x] === EMPTY) grid[y][x] = WALL;
             else if (grid[y][x] === WALL) grid[y][x] = OBSTACLE;
             else if (grid[y][x] === OBSTACLE) grid[y][x] = FINISH;
             else if (grid[y][x] === FINISH) grid[y][x] = SPAWN;
-            else if (grid[y][x] === SPAWN) grid[y][x] = EMPTY;
+            else if (grid[y][x] === SPAWN) grid[y][x] = DOOR;
+            else if (grid[y][x] === DOOR) grid[y][x] = LOCKED;
+            else if (grid[y][x] === LOCKED) { grid[y][x] = KEY; pendingKey = [x, y]; }
+            else if (grid[y][x] === KEY) { grid[y][x] = EMPTY; delete keyTargets[x + ',' + y]; }
             drawGrid();
         });
 
         window.addEventListener('keydown', (e) => {
+            if (settingGrid) {
+                if (e.key === 'ArrowUp') { gridSizeSetting = Math.min(MAX_GRID, gridSizeSetting + 1); e.preventDefault(); }
+                else if (e.key === 'ArrowDown') { gridSizeSetting = Math.max(MIN_GRID, gridSizeSetting - 1); e.preventDefault(); }
+                else if (e.key === 'PageUp') { gridSizeSetting = Math.min(MAX_GRID, gridSizeSetting + 10); e.preventDefault(); }
+                else if (e.key === 'PageDown') { gridSizeSetting = Math.max(MIN_GRID, gridSizeSetting - 10); e.preventDefault(); }
+                else if (e.key === 'Enter') { settingGrid = false; setGridSize(gridSizeSetting); e.preventDefault(); }
+                return;
+            }
             if (asking) {
                 if (e.key === 'ArrowUp') { timeLimit++; e.preventDefault(); }
                 else if (e.key === 'ArrowDown') { if (timeLimit > 1) timeLimit--; e.preventDefault(); }
@@ -227,10 +337,10 @@
             }
             if (e.key === '1') { mode = 'editor'; }
             else if (e.key === '2') { mode = 'simulation'; asking = true; }
+            else if (e.key === 'Escape') { pendingKey = null; }
         });
 
         setInterval(tick, 1000 / FPS);
-        drawGrid();
     </script>
 </body>
 </html>
