@@ -121,6 +121,14 @@
                 <div><span style="background:#ffc800"></span>Key</div>
                 <div><span style="background:#960096"></span>AI</div>
             </div>
+            <h2>AI count (solo)</h2>
+            <div class="save-row">
+                <select id="aiCount" class="field" style="flex:1">
+                    <option value="1" selected>1 AI</option>
+                    <option value="2">2 AIs</option>
+                    <option value="3">3 AIs</option>
+                </select>
+            </div>
             <h2>Save / Load</h2>
             <div class="save-row">
                 <input id="mazeName" type="text" placeholder="maze name" value="maze1">
@@ -434,6 +442,8 @@
         });
 
         setInterval(tick, 1000 / FPS);
+
+        document.getElementById('aiCount').onchange = (e) => { aiCount = parseInt(e.target.value, 10) || 1; };
 
         window.G = {
             setGameMode(m) { gameMode = m; },
