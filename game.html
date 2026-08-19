@@ -69,7 +69,7 @@
                 <li><kbd>1</kbd> — Editor mode</li>
                 <li><kbd>2</kbd> — Simulate (AI learns)</li>
                 <li><kbd>Click</kbd> a cell to cycle its tile</li>
-                <li>Place a key, then <kbd>click</kbd> a door to point the key at it</li>
+                <li>Place a key, then <kbd>click</kbd> a normal door to lock it</li>
                 <li><kbd>Esc</kbd> — cancel key pointing</li>
                 <li><kbd>&uarr;</kbd>/<kbd>&darr;</kbd>/<kbd>Enter</kbd> — set the time limit</li>
                 <li><kbd>SPACE</kbd> — start the AI moving</li>
@@ -111,7 +111,7 @@
 
         let mode = 'editor';
         let aiPos = [0, 0];
-        let hasKey = false;
+        let unlocked = new Set(); // "x,y" doors the AI holds a key for this episode
         let keyTargets = {};   // "x,y" -> [door_x, door_y]
         let pendingKey = null; // [x, y] of a placed key awaiting a door target
 
@@ -120,6 +120,8 @@
         let startTime = 0;
         let startGrid = null;
         let simWaiting = false;
+        let hintText = '';
+        let hintUntil = 0;
 
         let gridSizeSetting = 20;
         let settingGrid = true;
@@ -154,7 +156,7 @@
 
         function resetLevel() {
             grid = startGrid.map(row => row.slice());
-            hasKey = false;
+            unlocked = new Set();
         }
 
         function moveAI() {
@@ -173,8 +175,9 @@
                 reward = -1;
                 nx = x; ny = y;
             } else if (target === LOCKED) {
-                if (hasKey) {
+                if (unlocked.has(nx + ',' + ny)) {
                     reward = 5;
+                    unlocked.delete(nx + ',' + ny);
                     grid[ny][nx] = DOOR;
                 } else {
                     reward = -1;
@@ -182,7 +185,8 @@
                 }
             } else if (target === KEY) {
                 reward = 5;
-                hasKey = true;
+                const door = keyTargets[nx + ',' + ny];
+                if (door) unlocked.add(door[0] + ',' + door[1]);
                 grid[ny][nx] = EMPTY;
             } else if (nx === finish[0] && ny === finish[1]) {
                 reward = 10;
@@ -213,7 +217,7 @@
                 ctx.lineWidth = 1;
                 ctx.fillStyle = BLACK;
                 ctx.font = '16px -apple-system, "Segoe UI", sans-serif';
-                ctx.fillText('Point the key: click a door to link it (Esc to cancel)', 10, 20);
+                ctx.fillText('Point the key: click a door to lock it (Esc to cancel)', 10, 20);
             }
             for (const k in keyTargets) {
                 const [kx, ky] = k.split(',').map(Number);
@@ -235,7 +239,7 @@
             ctx.font = '24px -apple-system, "Segoe UI", sans-serif';
             ctx.fillText('Episode: ' + episode, 10, 26);
             ctx.fillText('Time Left: ' + Math.max(0, Math.floor(timeLimit)), 10, 56);
-            ctx.fillText('Has Key: ' + (hasKey ? 'Yes' : 'No'), 10, 86);
+            ctx.fillText('Keys: ' + unlocked.size, 10, 86);
             if (simWaiting) {
                 ctx.fillText('Press SPACE to start', 10, 116);
             }
@@ -265,7 +269,7 @@
             if (spawn) {
                 aiPos = spawn.slice();
                 startGrid = grid.map(row => row.slice());
-                hasKey = false;
+                unlocked = new Set();
                 episode = 1;
                 simWaiting = true;
             }
@@ -297,6 +301,11 @@
                 }
             } else {
                 drawEditorOverlays();
+                if (Date.now() < hintUntil) {
+                    ctx.fillStyle = BLACK;
+                    ctx.font = '16px -apple-system, "Segoe UI", sans-serif';
+                    ctx.fillText(hintText, 10, 40);
+                }
             }
         }
 
@@ -309,7 +318,11 @@
             const y = Math.floor(my / CELL);
             if (x < 0 || x >= GRID || y < 0 || y >= GRID) return;
             if (pendingKey) {
-                if (grid[y][x] === DOOR || grid[y][x] === LOCKED) {
+                if (grid[y][x] === DOOR) {
+                    grid[y][x] = LOCKED;
+                    keyTargets[pendingKey[0] + ',' + pendingKey[1]] = [x, y];
+                    pendingKey = null;
+                } else if (grid[y][x] === LOCKED) {
                     keyTargets[pendingKey[0] + ',' + pendingKey[1]] = [x, y];
                     pendingKey = null;
                 }
@@ -322,7 +335,15 @@
             else if (grid[y][x] === SPAWN) grid[y][x] = DOOR;
             else if (grid[y][x] === DOOR) grid[y][x] = LOCKED;
             else if (grid[y][x] === LOCKED) { grid[y][x] = KEY; pendingKey = [x, y]; }
-            else if (grid[y][x] === KEY) { grid[y][x] = EMPTY; delete keyTargets[x + ',' + y]; }
+            else if (grid[y][x] === KEY) {
+                const door = keyTargets[x + ',' + y];
+                grid[y][x] = EMPTY;
+                delete keyTargets[x + ',' + y];
+                if (door && grid[door[1]][door[0]] === LOCKED &&
+                    !Object.values(keyTargets).some(d => d[0] === door[0] && d[1] === door[1])) {
+                    grid[door[1]][door[0]] = DOOR;
+                }
+            }
             drawGrid();
         });
 
@@ -342,7 +363,17 @@
                 return;
             }
             if (e.key === '1') { mode = 'editor'; }
-            else if (e.key === '2') { mode = 'simulation'; asking = true; }
+            else if (e.key === '2') {
+                const spawn = findTile(SPAWN);
+                const finish = findTile(FINISH);
+                if (!spawn || !finish) {
+                    hintText = 'Need a Spawn AND a Finish to start';
+                    hintUntil = Date.now() + 2000;
+                } else {
+                    mode = 'simulation';
+                    asking = true;
+                }
+            }
             else if (e.key === 'Escape') { pendingKey = null; }
             else if (e.key === ' ') {
                 if (mode === 'simulation' && simWaiting) {
