@@ -54,6 +54,31 @@
         .legend div { margin: 4px 0; }
         .back { margin-top: 24px; color: #c9b3ff; text-decoration: none; }
         .back:hover { text-decoration: underline; }
+        .save-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 2px; }
+        .save-row input {
+            flex: 1 1 130px;
+            min-width: 0;
+            background: #2e2140;
+            border: 1px solid #4a3565;
+            border-radius: 5px;
+            color: #e8e0f0;
+            padding: 6px 8px;
+            font-family: inherit;
+            font-size: 0.9rem;
+        }
+        .save-row button {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: 6px 12px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+        .save-row button:hover { filter: brightness(1.15); }
+        .fb-status { margin-top: 8px; font-size: 0.85rem; color: #9fe6a0; min-height: 1.2em; }
+        .fb-status.err { color: #ff5f52; }
     </style>
 </head>
 <body>
@@ -86,6 +111,13 @@
                 <div><span style="background:#ffc800"></span>Key</div>
                 <div><span style="background:#960096"></span>AI</div>
             </div>
+            <h2>Save / Load</h2>
+            <div class="save-row">
+                <input id="mazeName" type="text" placeholder="maze name" value="maze1">
+                <button id="saveBtn" type="button">Save</button>
+                <button id="loadBtn" type="button">Load</button>
+            </div>
+            <div id="fbStatus" class="fb-status"></div>
         </div>
     </div>
 
@@ -385,6 +417,66 @@
         });
 
         setInterval(tick, 1000 / FPS);
+    </script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+
+        const app = initializeApp({
+            apiKey: "AIzaSyAJj2dFGnHZJjA1jASQ8Gsk_s8Ix2OfDDg",
+            authDomain: "bwzer-game.firebaseapp.com",
+            projectId: "bwzer-game",
+            storageBucket: "bwzer-game.firebasestorage.app",
+            messagingSenderId: "83897975367",
+            appId: "1:83897975367:web:b29e1cc57ab4773dc86762"
+        });
+        const db = getFirestore(app);
+
+        function status(msg, err) {
+            const el = document.getElementById('fbStatus');
+            if (!el) return;
+            el.textContent = msg;
+            el.className = 'fb-status' + (err ? ' err' : '');
+        }
+
+        async function saveGrid(name) {
+            try {
+                await addDoc(collection(db, "grids"), {
+                    name, size: GRID, grid: grid.flat(), keyTargets, savedAt: new Date()
+                });
+                status('Saved: ' + name);
+            } catch (e) {
+                status('Save failed: ' + e.message, true);
+            }
+        }
+
+        async function loadGrid(name) {
+            try {
+                const snap = await getDocs(collection(db, "grids"));
+                let found = null;
+                snap.forEach(d => { if (d.data().name === name) found = d.data(); });
+                if (!found) { status('Not found: ' + name, true); return; }
+                const size = found.size;
+                const flat = found.grid;
+                setGridSize(size);
+                grid = Array.from({ length: size }, (_, y) => flat.slice(y * size, (y + 1) * size));
+                keyTargets = found.keyTargets || {};
+                pendingKey = null;
+                unlocked = new Set();
+                mode = 'editor';
+                status('Loaded: ' + name);
+            } catch (e) {
+                status('Load failed: ' + e.message, true);
+            }
+        }
+
+        document.getElementById('saveBtn').addEventListener('click', () => {
+            saveGrid(document.getElementById('mazeName').value.trim() || 'maze1');
+        });
+        document.getElementById('loadBtn').addEventListener('click', () => {
+            loadGrid(document.getElementById('mazeName').value.trim() || 'maze1');
+        });
     </script>
 </body>
 </html>
