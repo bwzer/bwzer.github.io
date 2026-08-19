@@ -493,7 +493,7 @@
             appId: "1:83897975367:web:b29e1cc57ab4773dc86762"
         });
         const db = getFirestore(app);
-        const rtdb = getDatabase(app);
+        const rtdb = getDatabase(app, "https://bwzer-game-default-rtdb.firebaseio.com");
 
         const $ = id => document.getElementById(id);
         const myUid = (crypto.randomUUID && crypto.randomUUID()) || ('u' + Math.random().toString(36).slice(2));
@@ -501,6 +501,7 @@
         let aiAgent = null, aiRunning = false;
 
         function status(el, msg, err) { el.textContent = msg; el.className = 'status ' + (err ? 'err' : 'ok'); }
+        function rtErr(e) { const s = (e && e.message) || String(e); return /permission/i.test(s) ? s + ' (check RTDB Rules -> test mode)' : s; }
         function show(id) { $(id).classList.remove('hidden'); }
         function hide(id) { $(id).classList.add('hidden'); }
 
@@ -524,24 +525,28 @@
         function newCode() { const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < 4; i++) s += c[Math.floor(Math.random() * c.length)]; return s; }
 
         async function hostLobby(name) {
-            const code = newCode(); lobbyCode = code; isHost = true;
-            const m = window.G.getMaze();
-            await set(ref(rtdb, 'lobbies/' + code), { hostName: name, hostUid: myUid, gridSize: m.size, grid: m.grid, keyTargets: m.keyTargets || {}, status: 'lobby', createdAt: Date.now() });
-            await set(ref(rtdb, 'lobbies/' + code + '/players/' + myUid), { name, isHost: true, role: 'lobby', spawn: [0, 0], connected: true });
-            ref(rtdb, 'lobbies/' + code + '/players/' + myUid).onDisconnect().remove();
-            enterLobby(code, name, true);
+            try {
+                const code = newCode(); lobbyCode = code; isHost = true;
+                const m = window.G.getMaze();
+                await set(ref(rtdb, 'lobbies/' + code), { hostName: name, hostUid: myUid, gridSize: m.size, grid: m.grid, keyTargets: m.keyTargets || {}, status: 'lobby', createdAt: Date.now() });
+                await set(ref(rtdb, 'lobbies/' + code + '/players/' + myUid), { name, isHost: true, role: 'lobby', spawn: [0, 0], connected: true });
+                ref(rtdb, 'lobbies/' + code + '/players/' + myUid).onDisconnect().remove();
+                enterLobby(code, name, true);
+            } catch (e) { status($('mpStatus'), 'Host failed: ' + rtErr(e), true); }
         }
 
         async function joinLobby(code, name) {
-            const snap = await get(ref(rtdb, 'lobbies/' + code));
-            if (!snap.exists()) { status($('mpStatus'), 'Lobby not found', true); return; }
-            const players = snap.val().players || {};
-            if (Object.keys(players).length >= 4) { status($('mpStatus'), 'Lobby full', true); return; }
-            for (const uid in players) if (players[uid].name === name) { status($('mpStatus'), 'Name already taken', true); return; }
-            lobbyCode = code; isHost = false;
-            await set(ref(rtdb, 'lobbies/' + code + '/players/' + myUid), { name, isHost: false, role: 'lobby', spawn: [0, 0], connected: true });
-            ref(rtdb, 'lobbies/' + code + '/players/' + myUid).onDisconnect().remove();
-            enterLobby(code, name, false);
+            try {
+                const snap = await get(ref(rtdb, 'lobbies/' + code));
+                if (!snap.exists()) { status($('mpStatus'), 'Lobby not found', true); return; }
+                const players = snap.val().players || {};
+                if (Object.keys(players).length >= 4) { status($('mpStatus'), 'Lobby full', true); return; }
+                for (const uid in players) if (players[uid].name === name) { status($('mpStatus'), 'Name already taken', true); return; }
+                lobbyCode = code; isHost = false;
+                await set(ref(rtdb, 'lobbies/' + code + '/players/' + myUid), { name, isHost: false, role: 'lobby', spawn: [0, 0], connected: true });
+                ref(rtdb, 'lobbies/' + code + '/players/' + myUid).onDisconnect().remove();
+                enterLobby(code, name, false);
+            } catch (e) { status($('mpStatus'), 'Join failed: ' + rtErr(e), true); }
         }
 
         function enterLobby(code, name, host) {
