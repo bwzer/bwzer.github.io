@@ -493,7 +493,7 @@
             appId: "1:83897975367:web:b29e1cc57ab4773dc86762"
         });
         const db = getFirestore(app);
-        const rtdb = getDatabase(app, "https://bwzer-game-default-rtdb.firebaseio.com");
+        const rtdb = getDatabase(app, "https://bwzer-game-default-rtdb.asia-southeast1.firebasedatabase.app");
 
         const $ = id => document.getElementById(id);
         const myUid = (crypto.randomUUID && crypto.randomUUID()) || ('u' + Math.random().toString(36).slice(2));
