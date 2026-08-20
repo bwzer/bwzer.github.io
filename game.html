@@ -71,9 +71,13 @@
         <h2>Multiplayer</h2>
         <input id="mpName" class="field" placeholder="Your name" maxlength="16">
         <div class="lobby-row">
+            <input id="hostPw" class="field" placeholder="Password (optional)" maxlength="20" style="width:170px">
             <button id="hostBtn" class="btn">Host a lobby</button>
+        </div>
+        <div class="lobby-row">
             <span style="color:#b8a8cc">or join:</span>
             <input id="joinCode" class="field" placeholder="lobby code" maxlength="6" style="width:110px">
+            <input id="joinPw" class="field" placeholder="pw (if private)" maxlength="20" style="width:120px">
             <button id="joinBtn" class="btn ghost">Join</button>
         </div>
         <div id="lobbyList"></div>
@@ -601,6 +605,7 @@
         let aiAgent = null, aiRunning = false;
         let aiEnabled = true, started = false, myReady = false;
         let playing = false, myRole = 'lobby';
+        let lobbyPw = '';
         let lastMazeSig = '';
 
         function status(el, msg, err) { el.textContent = msg; el.className = 'status ' + (err ? 'err' : 'ok'); }
@@ -640,8 +645,11 @@
         async function hostLobby(name) {
             try {
                 const code = newCode(); lobbyCode = code; isHost = true;
+                lobbyPw = ($('hostPw').value || '').trim();
                 const m = window.G.getMaze();
-                await set(ref(rtdb, 'lobbies/' + code), { hostName: name, hostUid: myUid, gridSize: m.size, grid: m.grid, keyTargets: m.keyTargets || {}, status: 'lobby', objective: '', createdAt: Date.now(), hb: Date.now() });
+                const lobbyData = { hostName: name, hostUid: myUid, gridSize: m.size, grid: m.grid, keyTargets: m.keyTargets || {}, status: 'lobby', objective: '', createdAt: Date.now(), hb: Date.now() };
+                if (lobbyPw) lobbyData.pw = lobbyPw;
+                await set(ref(rtdb, 'lobbies/' + code), lobbyData);
                 await set(ref(rtdb, 'lobbies/' + code + '/players/' + myUid), { name, isHost: true, role: 'lobby', spawn: [0, 0], connected: true });
                 onDisconnect(ref(rtdb, 'lobbies/' + code + '/players/' + myUid)).remove();
                 onDisconnect(ref(rtdb, 'lobbies/' + code)).remove();
@@ -656,6 +664,8 @@
                 const lobby = snap.val();
                 if (!lobby.hb || Date.now() - lobby.hb > 15000) { status($('mpStatus'), 'Host offline, lobby is gone', true); return; }
                 if (lobby.hostUid && lobby.players && !lobby.players[lobby.hostUid]) { status($('mpStatus'), 'Host left', true); return; }
+                const pw = ($('joinPw').value || '').trim();
+                if (lobby.pw && lobby.pw !== pw) { status($('mpStatus'), 'Wrong password', true); return; }
                 if (lobby.status === 'playing') { status($('mpStatus'), 'Game already started', true); return; }
                 const players = lobby.players || {};
                 if (Object.keys(players).length >= 4) { status($('mpStatus'), 'Lobby full', true); return; }
@@ -676,7 +686,11 @@
             window.G.setCanEdit(false); window.G.setStartTs(0);
             $('readyBtn').textContent = 'Ready';
             $('lobbyHint').textContent = host ? 'You are the host. Draw the maze, then Start.' : 'Place your spawn, click Ready, then wait for the host to Start.';
-            if (host) { $('lobbyLink').value = location.origin + location.pathname + '?lobby=' + code; $('linkRow').style.display = ''; }
+            if (host) {
+                let link = location.origin + location.pathname + '?lobby=' + code;
+                if (lobbyPw) link += '&pw=' + encodeURIComponent(lobbyPw);
+                $('lobbyLink').value = link; $('linkRow').style.display = '';
+            }
             else $('linkRow').style.display = 'none';
             updateControls();
             listenLobby(code); listenPlayers(code); listenChat(code);
@@ -753,7 +767,7 @@
         function leaveLobby(kicked) {
             if (lobbyCode && myUid) remove(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid)).catch(() => {});
             if (isHost && lobbyCode) remove(ref(rtdb, 'lobbies/' + lobbyCode)).catch(() => {});
-            lobbyCode = ''; isHost = false; aiRunning = false; aiAgent = null; started = false; myReady = false; playing = false; myRole = 'lobby';
+            lobbyCode = ''; isHost = false; aiRunning = false; aiAgent = null; started = false; myReady = false; playing = false; myRole = 'lobby'; lobbyPw = '';
             window.G.clearRemote(); window.G.clearAI(); window.G.setGameMode(null); window.G.setLobbyPhase(null);
             hide('lobbyScreen'); show('mpSetup'); $('chatBox').innerHTML = '';
             if (kicked) status($('mpStatus'), 'The lobby closed', true);
@@ -830,8 +844,8 @@
                     const cnt = l.players ? Object.keys(l.players).length : 0; if (cnt >= 4) continue;
                     any = true;
                     const item = document.createElement('div'); item.className = 'lobby-item';
-                    item.textContent = code + ' - ' + l.hostName + ' (' + cnt + '/4)';
-                    item.onclick = () => { $('joinCode').value = code; };
+                    item.textContent = code + ' - ' + l.hostName + (l.pw ? ' [private]' : '') + ' (' + cnt + '/4)';
+                    item.onclick = () => { $('joinCode').value = code; if (l.pw) $('joinPw').focus(); };
                     list.appendChild(item);
                 }
                 if (!any) list.innerHTML = '<div style="color:#b8a8cc">No open lobbies</div>';
@@ -871,7 +885,7 @@
         try {
             const p = new URLSearchParams(location.search);
             const lc = p.get('lobby');
-            if (lc) { $('joinCode').value = lc.toUpperCase(); hide('modeScreen'); show('mpSetup'); window.G.setGameMode(null); }
+            if (lc) { $('joinCode').value = lc.toUpperCase(); const pw = p.get('pw'); if (pw) $('joinPw').value = pw; hide('modeScreen'); show('mpSetup'); window.G.setGameMode(null); }
         } catch (e) {}
     </script>
 </body>
