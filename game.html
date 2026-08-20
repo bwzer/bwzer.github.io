@@ -278,6 +278,11 @@
             }
         }
 
+        function inFog(x, y) {
+            const dx = x - myPos[0], dy = y - myPos[1];
+            return dx * dx + dy * dy <= FOG_RADIUS * FOG_RADIUS;
+        }
+
         function drawPlayer(x, y, color, name, isSelf) {
             const cx = x * CELL, cy = y * CELL;
             ctx.fillStyle = color; ctx.fillRect(cx + 2, cy + 2, CELL - 4, CELL - 4);
@@ -349,16 +354,18 @@
             }
 
             // playing
-            if (mpRole === 'spectator') drawGrid();
+            const spectating = mpRole === 'spectator';
+            if (spectating) drawGrid();
             else drawFog(myPos[0], myPos[1]);
 
             for (const uid in remotePlayers) {
-                if (uid === myUid && mpRole !== 'spectator') continue;
+                if (uid === myUid && !spectating) continue;
                 const p = remotePlayers[uid];
+                if (!spectating && !inFog(p.x, p.y)) continue;
                 drawPlayer(p.x, p.y, colorOf(uid), p.name, false);
             }
             if (mpRole === 'player') drawPlayer(myPos[0], myPos[1], colorOf(myUid), myName, true);
-            if (aiRemote) drawPlayer(aiRemote.x, aiRemote.y, PURPLE, 'AI', false);
+            if (aiRemote && (spectating || inFog(aiRemote.x, aiRemote.y))) drawPlayer(aiRemote.x, aiRemote.y, PURPLE, 'AI', false);
             if (mpRole !== 'spectator') {
                 ctx.fillStyle = BLACK; ctx.font = '14px -apple-system, "Segoe UI", sans-serif';
                 ctx.fillText('Arrow keys / WASD to move', 10, 20);
