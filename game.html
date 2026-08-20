@@ -95,7 +95,7 @@
             <button id="startBtn" class="btn">Start game</button>
             <button id="spectateBtn" class="btn">Spectate</button>
             <label class="aicheck"><input type="checkbox" id="aiToggle" checked> Add 1 AI</label>
-            <button id="stopBtn" class="btn">Stop</button>
+            <button id="stopBtn" class="btn" style="background:#d43f3f">Stop</button>
             <button id="leaveLobbyBtn" class="btn ghost">Leave</button>
         </div>
         <div class="lobby-row">
@@ -498,6 +498,7 @@
                 else if (e.key === ' ') { if (mode === 'simulation' && simWaiting) { simWaiting = false; startTime = Date.now(); } }
                 return;
             }
+            if (mpPhase === 'playing' && e.key === 'Escape') { window.NET.stop(); return; }
             if (mpPhase === 'playing' && mpRole === 'player') {
                 if (Date.now() < startTs + 3000) return;
                 if (e.target && e.target.tagName === 'INPUT') return;
@@ -764,7 +765,23 @@
             openDoor(x, y) { if (!lobbyCode) return; set(ref(rtdb, 'lobbies/' + lobbyCode + '/doorsOpen/' + x + ',' + y), true).catch(() => {}); },
             pushMaze() { if ((!isHost && !window.G.getCanEdit()) || !lobbyCode) return; const m = window.G.getMaze(); set(ref(rtdb, 'lobbies/' + lobbyCode + '/grid'), m.grid).catch(() => {}); set(ref(rtdb, 'lobbies/' + lobbyCode + '/gridSize'), m.size).catch(() => {}); set(ref(rtdb, 'lobbies/' + lobbyCode + '/keyTargets'), m.keyTargets).catch(() => {}); },
             updatePos(pos) { if (!lobbyCode) return; set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/pos'), pos).catch(() => {}); },
-            chat(text) { if (!lobbyCode || !text) return; push(ref(rtdb, 'lobbies/' + lobbyCode + '/chat'), { name: myName, text, ts: Date.now() }).catch(() => {}); }
+            chat(text) { if (!lobbyCode || !text) return; push(ref(rtdb, 'lobbies/' + lobbyCode + '/chat'), { name: myName, text, ts: Date.now() }).catch(() => {}); },
+            stop() {
+                if (!lobbyCode) return;
+                if (isHost) {
+                    aiRunning = false; aiAgent = null;
+                    set(ref(rtdb, 'lobbies/' + lobbyCode + '/status'), 'lobby').catch(() => {});
+                    remove(ref(rtdb, 'lobbies/' + lobbyCode + '/ai')).catch(() => {});
+                    remove(ref(rtdb, 'lobbies/' + lobbyCode + '/keysTaken')).catch(() => {});
+                    remove(ref(rtdb, 'lobbies/' + lobbyCode + '/doorsOpen')).catch(() => {});
+                } else {
+                    myRole = 'spectator';
+                    window.G.setRole('spectator'); window.G.resetLocal();
+                    set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/role'), 'spectator').catch(() => {});
+                    set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/pos'), null).catch(() => {});
+                    updateControls();
+                }
+            }
         };
 
         function startPlay(role) {
@@ -843,21 +860,7 @@
             $('aiToggle').onchange = (e) => { aiEnabled = e.target.checked; };
             $('objectiveInput').onchange = (e) => { set(ref(rtdb, 'lobbies/' + lobbyCode + '/objective'), e.target.value).catch(() => {}); };
             $('copyLinkBtn').onclick = () => { const v = $('lobbyLink').value; if (navigator.clipboard) navigator.clipboard.writeText(v).catch(() => {}); else { $('lobbyLink').select(); document.execCommand('copy'); } };
-            $('stopBtn').onclick = () => {
-                if (isHost) {
-                    aiRunning = false; aiAgent = null;
-                    set(ref(rtdb, 'lobbies/' + lobbyCode + '/status'), 'lobby').catch(() => {});
-                    remove(ref(rtdb, 'lobbies/' + lobbyCode + '/ai')).catch(() => {});
-                    remove(ref(rtdb, 'lobbies/' + lobbyCode + '/keysTaken')).catch(() => {});
-                    remove(ref(rtdb, 'lobbies/' + lobbyCode + '/doorsOpen')).catch(() => {});
-                } else {
-                    myRole = 'spectator';
-                    window.G.setRole('spectator'); window.G.resetLocal();
-                    set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/role'), 'spectator').catch(() => {});
-                    set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/pos'), null).catch(() => {});
-                    updateControls();
-                }
-            };
+            $('stopBtn').onclick = () => window.NET.stop();
             $('leaveLobbyBtn').onclick = () => leaveLobby(false);
 
             $('saveBtn').onclick = () => saveGrid($('mazeName').value.trim() || 'maze1');
