@@ -105,6 +105,10 @@
         <div class="lobby-row">
             <input id="objectiveInput" class="field" placeholder="Objective (optional)" style="flex:1">
         </div>
+        <div class="lobby-row" id="mpGridRow">
+            <span style="color:#b8a8cc">Grid size</span>
+            <input id="mpGridSize" class="field" type="number" min="3" max="150" style="width:70px">
+        </div>
         <div class="lobby-row" id="linkRow" style="display:none">
             <input id="lobbyLink" class="field" readonly style="flex:1">
             <button id="copyLinkBtn" class="btn ghost">Copy</button>
@@ -221,6 +225,7 @@
             Q = Array.from({ length: n }, () => Array.from({ length: n }, () => [0, 0, 0, 0]));
             document.getElementById('title').textContent = n + 'x' + n + ' Grid Game';
             const gi = document.getElementById('gridSizeInput'); if (gi) gi.value = n;
+            const mg = document.getElementById('mpGridSize'); if (mg) mg.value = n;
         }
 
         function findTile(t) {
@@ -543,6 +548,11 @@
             if (n >= 1) timeLimit = n;
             else e.target.value = timeLimit;
         };
+        document.getElementById('mpGridSize').onchange = (e) => {
+            const n = parseInt(e.target.value, 10);
+            if (n >= MIN_GRID && n <= MAX_GRID) { setGridSize(n); if (window.NET) window.NET.pushMaze(); }
+            else e.target.value = GRID;
+        };
 
         window.G = {
             setGameMode(m) { gameMode = m; },
@@ -620,6 +630,7 @@
             $('spectateBtn').style.display = lobby ? '' : 'none';
             $('aiToggle').style.display = (lobby && isHost) ? '' : 'none';
             $('objectiveInput').style.display = isHost ? '' : 'none';
+            $('mpGridRow').style.display = (lobby && isHost) ? '' : 'none';
             $('stopBtn').style.display = (playing && (isHost || myRole === 'player')) ? '' : 'none';
         }
 
@@ -684,6 +695,7 @@
             window.G.setHost(host); window.G.setMyUid(myUid); window.G.setMyName(name); window.G.setSpawnMode(false);
             started = false; myReady = false; playing = false; myRole = 'lobby';
             window.G.setCanEdit(false); window.G.setStartTs(0);
+            $('mpGridSize').value = window.G.getMaze().size;
             $('readyBtn').textContent = 'Ready';
             $('lobbyHint').textContent = host ? 'You are the host. Draw the maze, then Start.' : 'Place your spawn, click Ready, then wait for the host to Start.';
             if (host) {
