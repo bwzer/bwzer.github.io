@@ -519,6 +519,7 @@
         const myUid = (crypto.randomUUID && crypto.randomUUID()) || ('u' + Math.random().toString(36).slice(2));
         let myName = '', lobbyCode = '', isHost = false, spawnMode = false;
         let aiAgent = null, aiRunning = false;
+        let lastMazeSig = '';
 
         function status(el, msg, err) { el.textContent = msg; el.className = 'status ' + (err ? 'err' : 'ok'); }
         function rtErr(e) { const s = (e && e.message) || String(e); return /permission/i.test(s) ? s + ' (check RTDB Rules -> test mode)' : s; }
@@ -551,6 +552,7 @@
                 await set(ref(rtdb, 'lobbies/' + code), { hostName: name, hostUid: myUid, gridSize: m.size, grid: m.grid, keyTargets: m.keyTargets || {}, status: 'lobby', createdAt: Date.now() });
                 await set(ref(rtdb, 'lobbies/' + code + '/players/' + myUid), { name, isHost: true, role: 'lobby', spawn: [0, 0], connected: true });
                 onDisconnect(ref(rtdb, 'lobbies/' + code + '/players/' + myUid)).remove();
+                onDisconnect(ref(rtdb, 'lobbies/' + code)).remove();
                 enterLobby(code, name, true);
             } catch (e) { status($('mpStatus'), 'Host failed: ' + rtErr(e), true); }
         }
@@ -582,7 +584,10 @@
             onValue(ref(rtdb, 'lobbies/' + code), (snap) => {
                 const d = snap.val();
                 if (!d) { leaveLobby(true); return; }
-                if (!isHost && d.grid && d.gridSize) window.G.setMaze(d.gridSize, d.grid, d.keyTargets || {});
+                if (!isHost && d.grid && d.gridSize) {
+                    const sig = d.gridSize + '|' + d.grid.join(',') + '|' + JSON.stringify(d.keyTargets || {});
+                    if (sig !== lastMazeSig) { lastMazeSig = sig; window.G.setMaze(d.gridSize, d.grid, d.keyTargets || {}); }
+                }
                 if (d.ai) window.G.setAI(d.ai.x, d.ai.y); else window.G.clearAI();
             });
         }
@@ -629,20 +634,21 @@
         }
 
         window.NET = {
-            setSpawn(pos) { if (!lobbyCode) return; set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/spawn'), pos); window.G.setRemoteSpawn(myUid, pos); window.G.setMySpawn(pos); },
-            pushMaze() { if (!isHost || !lobbyCode) return; const m = window.G.getMaze(); set(ref(rtdb, 'lobbies/' + lobbyCode + '/grid'), m.grid); set(ref(rtdb, 'lobbies/' + lobbyCode + '/gridSize'), m.size); set(ref(rtdb, 'lobbies/' + lobbyCode + '/keyTargets'), m.keyTargets); },
-            updatePos(pos) { if (!lobbyCode) return; set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/pos'), pos); },
-            chat(text) { if (!lobbyCode || !text) return; push(ref(rtdb, 'lobbies/' + lobbyCode + '/chat'), { name: myName, text, ts: Date.now() }); }
+            setSpawn(pos) { if (!lobbyCode) return; set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/spawn'), pos).catch(() => {}); window.G.setRemoteSpawn(myUid, pos); window.G.setMySpawn(pos); },
+            pushMaze() { if (!isHost || !lobbyCode) return; const m = window.G.getMaze(); set(ref(rtdb, 'lobbies/' + lobbyCode + '/grid'), m.grid).catch(() => {}); set(ref(rtdb, 'lobbies/' + lobbyCode + '/gridSize'), m.size).catch(() => {}); set(ref(rtdb, 'lobbies/' + lobbyCode + '/keyTargets'), m.keyTargets).catch(() => {}); },
+            updatePos(pos) { if (!lobbyCode) return; set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/pos'), pos).catch(() => {}); },
+            chat(text) { if (!lobbyCode || !text) return; push(ref(rtdb, 'lobbies/' + lobbyCode + '/chat'), { name: myName, text, ts: Date.now() }).catch(() => {}); }
         };
 
         function startPlay(role) {
             const spawn = window.G.getLocalSpawn() || [0, 0];
-            set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/role'), role);
-            set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/pos'), spawn);
+            set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/role'), role).catch(() => {});
+            set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/pos'), spawn).catch(() => {});
             window.G.setRole(role); window.G.setLobbyPhase('playing'); window.G.setSpawnMode(false);
             window.G.setMyPos(spawn.slice()); window.G.setMySpawn(spawn.slice());
             if (role === 'player') window.NET.updatePos(spawn);
             if (isHost && role === 'player') { aiAgent = { pos: (findSpawn() || [0, 0]).slice(), unlocked: new Set() }; aiRunning = true; }
+            else { aiRunning = false; if (isHost && lobbyCode) remove(ref(rtdb, 'lobbies/' + lobbyCode + '/ai')).catch(() => {}); }
         }
         function findSpawn() { const m = window.G.getMaze(); for (let i = 0; i < m.grid.length; i++) if (m.grid[i] === 4) return [i % m.size, Math.floor(i / m.size)]; return null; }
 
@@ -650,7 +656,7 @@
         setInterval(() => {
             if (isHost && aiRunning && aiAgent && lobbyCode) {
                 const pos = window.G.moveMPAI(aiAgent);
-                set(ref(rtdb, 'lobbies/' + lobbyCode + '/ai'), { x: pos[0], y: pos[1] });
+                set(ref(rtdb, 'lobbies/' + lobbyCode + '/ai'), { x: pos[0], y: pos[1] }).catch(() => {});
             }
         }, 250);
 
