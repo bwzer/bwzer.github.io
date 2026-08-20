@@ -104,6 +104,7 @@
                 <li><kbd>1</kbd> — Editor mode</li>
                 <li><kbd>2</kbd> — Simulate (AI learns)</li>
                 <li><kbd>Click</kbd> a cell to cycle its tile</li>
+                <li><kbd>Right-click</kbd> a cell to erase it</li>
                 <li>Place a key, then <kbd>click</kbd> a normal door to lock it</li>
                 <li><kbd>Esc</kbd> — cancel key pointing</li>
                 <li><kbd>&uarr;</kbd>/<kbd>&darr;</kbd>/<kbd>Enter</kbd> — set the time limit</li>
@@ -392,8 +393,21 @@
             }
         }
 
+        function deleteTile(x, y) {
+            if (grid[y][x] === KEY) {
+                const door = keyTargets[x + ',' + y];
+                delete keyTargets[x + ',' + y];
+                if (door && grid[door[1]][door[0]] === LOCKED && !Object.values(keyTargets).some(d => d[0] === door[0] && d[1] === door[1])) {
+                    grid[door[1]][door[0]] = DOOR;
+                }
+            }
+            grid[y][x] = EMPTY;
+            if (pendingKey && pendingKey[0] === x && pendingKey[1] === y) pendingKey = null;
+        }
+
         canvas.addEventListener('mousedown', (e) => {
             if (!gameMode) return;
+            if (e.button !== 0) return;
             const rect = canvas.getBoundingClientRect();
             const x = Math.floor((e.clientX - rect.left) / CELL), y = Math.floor((e.clientY - rect.top) / CELL);
             if (x < 0 || x >= GRID || y < 0 || y >= GRID) return;
@@ -411,6 +425,18 @@
                 else if (grid[y][x] === KEY) grid[y][x] = EMPTY;
                 window.NET.pushMaze();
             }
+        });
+
+        canvas.addEventListener('contextmenu', (e) => {
+            if (!gameMode) return;
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / CELL), y = Math.floor((e.clientY - rect.top) / CELL);
+            if (x < 0 || x >= GRID || y < 0 || y >= GRID) return;
+            if (gameMode === 'solo') { if (mode === 'editor') deleteTile(x, y); return; }
+            if (mpPhase !== 'lobby' || !isHost || spawnMode) return;
+            deleteTile(x, y);
+            window.NET.pushMaze();
         });
 
         window.addEventListener('keydown', (e) => {
