@@ -101,6 +101,10 @@
         <div class="lobby-row">
             <input id="objectiveInput" class="field" placeholder="Objective (optional)" style="flex:1">
         </div>
+        <div class="lobby-row" id="linkRow" style="display:none">
+            <input id="lobbyLink" class="field" readonly style="flex:1">
+            <button id="copyLinkBtn" class="btn ghost">Copy</button>
+        </div>
         <div id="objectiveText" class="objective"></div>
         <div id="lobbyHint" class="status"></div>
     </div>
@@ -129,6 +133,7 @@
                 <div><span style="background:#8b4513"></span>Normal door</div>
                 <div><span style="background:#e65a00"></span>Locked door</div>
                 <div><span style="background:#ffc800"></span>Key</div>
+                <div><span style="background:#00e5ff"></span>Hazard (spike)</div>
                 <div><span style="background:#960096"></span>AI</div>
             </div>
             <h2>Grid size</h2>
@@ -163,8 +168,8 @@
         const FPS = 10;
         const MIN_GRID = 3, MAX_GRID = 150;
         const FOG_RADIUS = 4;
-        const EMPTY = 0, WALL = 1, OBSTACLE = 2, FINISH = 3, SPAWN = 4, DOOR = 5, LOCKED = 6, KEY = 7;
-        const TILE_COLORS = ['#ffffff', '#969696', '#ff0000', '#00ff00', '#009696', '#8b4513', '#e65a00', '#ffc800'];
+        const EMPTY = 0, WALL = 1, OBSTACLE = 2, FINISH = 3, SPAWN = 4, DOOR = 5, LOCKED = 6, KEY = 7, HAZARD = 8;
+        const TILE_COLORS = ['#ffffff', '#969696', '#ff0000', '#00ff00', '#009696', '#8b4513', '#e65a00', '#ffc800', '#00e5ff'];
         const BLACK = '#000000', PURPLE = '#960096';
         const PLAYER_COLORS = ['#ff5f52', '#4aa3ff', '#ffd54a', '#66e066', '#ff9f4a', '#c58fff'];
 
@@ -199,6 +204,8 @@
         let remoteSpawns = {};        // uid -> [x,y]
         let aiRemote = null;
         let hasKey = false;
+        let startTs = 0;
+        let canEdit = false;
 
         function setGridSize(n) {
             GRID = n;
@@ -235,7 +242,7 @@
             else if (action === 3) { if (x < GRID - 1) nx++; }
             let reward = -0.05;
             const target = grid[ny][nx];
-            if (target === WALL || target === OBSTACLE) { reward = -1; nx = x; ny = y; }
+            if (target === WALL || target === OBSTACLE || target === HAZARD) { reward = -1; nx = x; ny = y; }
             else if (target === LOCKED) {
                 if (agent.unlocked.has(nx + ',' + ny)) { reward = 5; agent.unlocked.delete(nx + ',' + ny); grid[ny][nx] = DOOR; }
                 else { reward = -1; nx = x; ny = y; }
@@ -367,6 +374,14 @@
             }
             if (mpRole === 'player') drawPlayer(myPos[0], myPos[1], colorOf(myUid), myName, true);
             if (aiRemote && (spectating || inFog(aiRemote.x, aiRemote.y))) drawPlayer(aiRemote.x, aiRemote.y, PURPLE, 'AI', false);
+            if (Date.now() < startTs + 3000) {
+                const n = Math.ceil((startTs + 3000 - Date.now()) / 1000);
+                ctx.fillStyle = BLACK; ctx.font = 'bold 48px -apple-system, "Segoe UI", sans-serif'; ctx.textAlign = 'center';
+                ctx.fillText(String(n), WIDTH / 2, HEIGHT / 2); ctx.textAlign = 'left';
+            } else if (Date.now() < startTs + 3600) {
+                ctx.fillStyle = '#00aa00'; ctx.font = 'bold 48px -apple-system, "Segoe UI", sans-serif'; ctx.textAlign = 'center';
+                ctx.fillText('GO!', WIDTH / 2, HEIGHT / 2); ctx.textAlign = 'left';
+            }
             if (mpRole !== 'spectator') {
                 ctx.fillStyle = BLACK; ctx.font = '14px -apple-system, "Segoe UI", sans-serif';
                 ctx.fillText('Arrow keys / WASD to move', 10, 20);
@@ -404,11 +419,12 @@
             else if (grid[y][x] === LOCKED) { grid[y][x] = KEY; pendingKey = [x, y]; }
             else if (grid[y][x] === KEY) {
                 const door = keyTargets[x + ',' + y];
-                grid[y][x] = EMPTY; delete keyTargets[x + ',' + y];
+                grid[y][x] = HAZARD; delete keyTargets[x + ',' + y];
                 if (door && grid[door[1]][door[0]] === LOCKED && !Object.values(keyTargets).some(d => d[0] === door[0] && d[1] === door[1])) {
                     grid[door[1]][door[0]] = DOOR;
                 }
             }
+            else if (grid[y][x] === HAZARD) grid[y][x] = EMPTY;
         }
 
         function deleteTile(x, y) {
@@ -432,7 +448,7 @@
             if (gameMode === 'solo') { if (mode === 'editor') soloClick(x, y); return; }
             if (mpPhase !== 'lobby') return;
             if (spawnMode) { window.NET.setSpawn([x, y]); return; }
-            if (isHost) {
+            if (isHost || canEdit) {
                 if (grid[y][x] === EMPTY) grid[y][x] = WALL;
                 else if (grid[y][x] === WALL) grid[y][x] = OBSTACLE;
                 else if (grid[y][x] === OBSTACLE) grid[y][x] = FINISH;
@@ -440,7 +456,8 @@
                 else if (grid[y][x] === SPAWN) grid[y][x] = DOOR;
                 else if (grid[y][x] === DOOR) grid[y][x] = LOCKED;
                 else if (grid[y][x] === LOCKED) grid[y][x] = KEY;
-                else if (grid[y][x] === KEY) grid[y][x] = EMPTY;
+                else if (grid[y][x] === KEY) grid[y][x] = HAZARD;
+                else if (grid[y][x] === HAZARD) grid[y][x] = EMPTY;
                 window.NET.pushMaze();
             }
         });
@@ -452,7 +469,7 @@
             const x = Math.floor((e.clientX - rect.left) / CELL), y = Math.floor((e.clientY - rect.top) / CELL);
             if (x < 0 || x >= GRID || y < 0 || y >= GRID) return;
             if (gameMode === 'solo') { if (mode === 'editor') deleteTile(x, y); return; }
-            if (mpPhase !== 'lobby' || !isHost || spawnMode) return;
+            if (mpPhase !== 'lobby' || (!isHost && !canEdit) || spawnMode) return;
             deleteTile(x, y);
             window.NET.pushMaze();
         });
@@ -474,6 +491,7 @@
                 return;
             }
             if (mpPhase === 'playing' && mpRole === 'player') {
+                if (Date.now() < startTs + 3000) return;
                 if (e.target && e.target.tagName === 'INPUT') return;
                 let dx = 0, dy = 0;
                 const k = e.key;
@@ -488,6 +506,7 @@
                     const t = grid[ny][nx];
                     if (t === WALL || t === OBSTACLE) return;
                     if (t === LOCKED && !hasKey) return;
+                    if (t === HAZARD) { hasKey = false; myPos = mySpawn.slice(); window.NET.updatePos(myPos); return; }
                     myPos = [nx, ny];
                     if (t === KEY) hasKey = true;
                     else if (t === LOCKED) hasKey = false;
@@ -514,6 +533,9 @@
 
         window.G = {
             setGameMode(m) { gameMode = m; },
+            setStartTs(ts) { startTs = ts; },
+            setCanEdit(b) { canEdit = b; },
+            getCanEdit() { return canEdit; },
             setMaze(size, flat, kt) {
                 setGridSize(size);
                 grid = Array.from({ length: size }, (_, y) => flat.slice(y * size, (y + 1) * size));
@@ -550,7 +572,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
         import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
-        import { getDatabase, ref, set, get, push, onValue, onChildAdded, onDisconnect, remove } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-database.js";
+        import { getDatabase, ref, set, get, push, onValue, onChildAdded, onDisconnect, remove, update } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-database.js";
 
         const app = initializeApp({
             apiKey: "AIzaSyAJj2dFGnHZJjA1jASQ8Gsk_s8Ix2OfDDg",
@@ -641,8 +663,11 @@
             window.G.setGameMode('mp'); window.G.setLobbyPhase('lobby'); window.G.setRole('lobby');
             window.G.setHost(host); window.G.setMyUid(myUid); window.G.setMyName(name); window.G.setSpawnMode(false);
             started = false; myReady = false; playing = false; myRole = 'lobby';
+            window.G.setCanEdit(false); window.G.setStartTs(0);
             $('readyBtn').textContent = 'Ready';
             $('lobbyHint').textContent = host ? 'You are the host. Draw the maze, then Start.' : 'Place your spawn, click Ready, then wait for the host to Start.';
+            if (host) { $('lobbyLink').value = location.origin + location.pathname + '?lobby=' + code; $('linkRow').style.display = ''; }
+            else $('linkRow').style.display = 'none';
             updateControls();
             listenLobby(code); listenPlayers(code); listenChat(code);
         }
@@ -659,6 +684,7 @@
                 $('objectiveText').textContent = d.objective || '';
                 if (d.status === 'playing' && !started) {
                     started = true;
+                    window.G.setStartTs(d.startTs || 0);
                     const my = d.players && d.players[myUid];
                     startPlay((isHost || (my && my.ready)) ? 'player' : 'spectator');
                 } else if (d.status === 'lobby' && started) {
@@ -685,8 +711,15 @@
                     if (!p || p.connected === false) continue;
                     count++;
                     const li = document.createElement('div');
-                    li.textContent = (p.isHost ? '[HOST] ' : '') + p.name + (p.ready ? ' (ready)' : '') + (p.role === 'player' ? ' (playing)' : p.role === 'spectator' ? ' (spectating)' : '');
+                    li.textContent = (p.isHost ? '[HOST] ' : '') + p.name + (p.canEdit ? ' (editor)' : '') + (p.ready ? ' (ready)' : '') + (p.role === 'player' ? ' (playing)' : p.role === 'spectator' ? ' (spectating)' : '');
+                    if (isHost && !p.isHost) {
+                        const cb = document.createElement('input');
+                        cb.type = 'checkbox'; cb.checked = !!p.canEdit; cb.style.marginLeft = '8px';
+                        cb.onchange = () => set(ref(rtdb, 'lobbies/' + code + '/players/' + uid + '/canEdit'), cb.checked).catch(() => {});
+                        li.appendChild(cb);
+                    }
                     $('playerList').appendChild(li);
+                    if (uid === myUid) window.G.setCanEdit(!!p.canEdit);
                     if (p.spawn) window.G.setRemoteSpawn(uid, p.spawn);
                     if (p.pos && p.role === 'player') window.G.setRemotePlayer(uid, p.name, p.pos[0], p.pos[1]);
                 }
@@ -717,7 +750,7 @@
 
         window.NET = {
             setSpawn(pos) { if (!lobbyCode) return; set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/spawn'), pos).catch(() => {}); window.G.setRemoteSpawn(myUid, pos); window.G.setMySpawn(pos); },
-            pushMaze() { if (!isHost || !lobbyCode) return; const m = window.G.getMaze(); set(ref(rtdb, 'lobbies/' + lobbyCode + '/grid'), m.grid).catch(() => {}); set(ref(rtdb, 'lobbies/' + lobbyCode + '/gridSize'), m.size).catch(() => {}); set(ref(rtdb, 'lobbies/' + lobbyCode + '/keyTargets'), m.keyTargets).catch(() => {}); },
+            pushMaze() { if ((!isHost && !window.G.getCanEdit()) || !lobbyCode) return; const m = window.G.getMaze(); set(ref(rtdb, 'lobbies/' + lobbyCode + '/grid'), m.grid).catch(() => {}); set(ref(rtdb, 'lobbies/' + lobbyCode + '/gridSize'), m.size).catch(() => {}); set(ref(rtdb, 'lobbies/' + lobbyCode + '/keyTargets'), m.keyTargets).catch(() => {}); },
             updatePos(pos) { if (!lobbyCode) return; set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/pos'), pos).catch(() => {}); },
             chat(text) { if (!lobbyCode || !text) return; push(ref(rtdb, 'lobbies/' + lobbyCode + '/chat'), { name: myName, text, ts: Date.now() }).catch(() => {}); }
         };
@@ -789,7 +822,7 @@
                 if (myReady) set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/role'), 'lobby').catch(() => {});
                 $('readyBtn').textContent = myReady ? 'Ready ✓' : 'Ready';
             };
-            $('startBtn').onclick = () => { set(ref(rtdb, 'lobbies/' + lobbyCode + '/status'), 'playing').catch(() => {}); };
+            $('startBtn').onclick = () => { update(ref(rtdb, 'lobbies/' + lobbyCode), { status: 'playing', startTs: Date.now() }).catch(() => {}); };
             $('spectateBtn').onclick = () => {
                 myReady = false; $('readyBtn').textContent = 'Ready';
                 set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/ready'), false).catch(() => {});
@@ -797,6 +830,7 @@
             };
             $('aiToggle').onchange = (e) => { aiEnabled = e.target.checked; };
             $('objectiveInput').onchange = (e) => { set(ref(rtdb, 'lobbies/' + lobbyCode + '/objective'), e.target.value).catch(() => {}); };
+            $('copyLinkBtn').onclick = () => { const v = $('lobbyLink').value; if (navigator.clipboard) navigator.clipboard.writeText(v).catch(() => {}); else { $('lobbyLink').select(); document.execCommand('copy'); } };
             $('stopBtn').onclick = () => {
                 if (isHost) {
                     aiRunning = false; aiAgent = null;
@@ -817,6 +851,11 @@
         }
 
         wire();
+        try {
+            const p = new URLSearchParams(location.search);
+            const lc = p.get('lobby');
+            if (lc) { $('joinCode').value = lc.toUpperCase(); hide('modeScreen'); show('mpSetup'); window.G.setGameMode(null); }
+        } catch (e) {}
     </script>
 </body>
 </html>
