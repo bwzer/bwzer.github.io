@@ -290,6 +290,31 @@
             }
         }
 
+        function blocksView(t) {
+            return t === WALL || t === OBSTACLE || t === LOCKED;
+        }
+
+        function hasLineOfSight(x0, y0, x1, y1) {
+            let x = x0, y = y0;
+            const dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
+            const sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+            let err = dx - dy;
+            while (x !== x1 || y !== y1) {
+                const e2 = 2 * err;
+                if (e2 > -dy) { err -= dy; x += sx; }
+                if (e2 < dx) { err += dx; y += sy; }
+                if (x === x1 && y === y1) break;
+                if (blocksView(effTile(x, y))) return false;
+            }
+            return true;
+        }
+
+        function visible(x, y) {
+            const dx = x - myPos[0], dy = y - myPos[1];
+            if (dx * dx + dy * dy > FOG_RADIUS * FOG_RADIUS) return false;
+            return hasLineOfSight(myPos[0], myPos[1], x, y);
+        }
+
         function drawFog(px, py) {
             ctx.fillStyle = 'rgba(10,10,22,0.88)'; ctx.fillRect(0, 0, WIDTH, HEIGHT);
             const R = FOG_RADIUS;
@@ -297,6 +322,7 @@
                 if (dx * dx + dy * dy > R * R) continue;
                 const x = px + dx, y = py + dy;
                 if (x < 0 || y < 0 || x >= GRID || y >= GRID) continue;
+                if (!visible(x, y)) continue;
                 ctx.fillStyle = TILE_COLORS[effTile(x, y)];
                 ctx.fillRect(x * CELL, y * CELL, CELL, CELL);
                 ctx.strokeStyle = BLACK; ctx.strokeRect(x * CELL, y * CELL, CELL, CELL);
@@ -304,8 +330,7 @@
         }
 
         function inFog(x, y) {
-            const dx = x - myPos[0], dy = y - myPos[1];
-            return dx * dx + dy * dy <= FOG_RADIUS * FOG_RADIUS;
+            return visible(x, y);
         }
 
         function drawPlayer(x, y, color, name, isSelf) {
