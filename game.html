@@ -121,6 +121,14 @@
                 <div><span style="background:#ffc800"></span>Key</div>
                 <div><span style="background:#960096"></span>AI</div>
             </div>
+            <h2>Grid size</h2>
+            <div class="save-row">
+                <input id="gridSizeInput" class="field" type="number" min="3" max="150" value="20" style="flex:1">
+            </div>
+            <h2>Time limit (seconds)</h2>
+            <div class="save-row">
+                <input id="timeLimitInput" class="field" type="number" min="1" value="20" style="flex:1">
+            </div>
             <h2>AI count (solo)</h2>
             <div class="save-row">
                 <select id="aiCount" class="field" style="flex:1">
@@ -189,6 +197,7 @@
             grid = Array.from({ length: n }, () => Array(n).fill(EMPTY));
             Q = Array.from({ length: n }, () => Array.from({ length: n }, () => [0, 0, 0, 0]));
             document.getElementById('title').textContent = n + 'x' + n + ' Grid Game';
+            const gi = document.getElementById('gridSizeInput'); if (gi) gi.value = n;
         }
 
         function findTile(t) {
@@ -444,6 +453,17 @@
         setInterval(tick, 1000 / FPS);
 
         document.getElementById('aiCount').onchange = (e) => { aiCount = parseInt(e.target.value, 10) || 1; };
+
+        document.getElementById('gridSizeInput').onchange = (e) => {
+            const n = parseInt(e.target.value, 10);
+            if (n >= MIN_GRID && n <= MAX_GRID) setGridSize(n);
+            else e.target.value = GRID;
+        };
+        document.getElementById('timeLimitInput').onchange = (e) => {
+            const n = parseInt(e.target.value, 10);
+            if (n >= 1) timeLimit = n;
+            else e.target.value = timeLimit;
+        };
 
         window.G = {
             setGameMode(m) { gameMode = m; },
