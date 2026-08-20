@@ -575,7 +575,7 @@
             try {
                 const code = newCode(); lobbyCode = code; isHost = true;
                 const m = window.G.getMaze();
-                await set(ref(rtdb, 'lobbies/' + code), { hostName: name, hostUid: myUid, gridSize: m.size, grid: m.grid, keyTargets: m.keyTargets || {}, status: 'lobby', createdAt: Date.now() });
+                await set(ref(rtdb, 'lobbies/' + code), { hostName: name, hostUid: myUid, gridSize: m.size, grid: m.grid, keyTargets: m.keyTargets || {}, status: 'lobby', createdAt: Date.now(), hb: Date.now() });
                 await set(ref(rtdb, 'lobbies/' + code + '/players/' + myUid), { name, isHost: true, role: 'lobby', spawn: [0, 0], connected: true });
                 onDisconnect(ref(rtdb, 'lobbies/' + code + '/players/' + myUid)).remove();
                 onDisconnect(ref(rtdb, 'lobbies/' + code)).remove();
@@ -587,7 +587,10 @@
             try {
                 const snap = await get(ref(rtdb, 'lobbies/' + code));
                 if (!snap.exists()) { status($('mpStatus'), 'Lobby not found', true); return; }
-                const players = snap.val().players || {};
+                const lobby = snap.val();
+                if (!lobby.hb || Date.now() - lobby.hb > 15000) { status($('mpStatus'), 'Host offline, lobby is gone', true); return; }
+                if (lobby.hostUid && lobby.players && !lobby.players[lobby.hostUid]) { status($('mpStatus'), 'Host left', true); return; }
+                const players = lobby.players || {};
                 if (Object.keys(players).length >= 4) { status($('mpStatus'), 'Lobby full', true); return; }
                 for (const uid in players) if (players[uid].name === name) { status($('mpStatus'), 'Name already taken', true); return; }
                 lobbyCode = code; isHost = false;
@@ -686,6 +689,11 @@
             }
         }, 250);
 
+        // host heartbeat so dead lobbies can be detected + filtered
+        setInterval(() => {
+            if (isHost && lobbyCode) set(ref(rtdb, 'lobbies/' + lobbyCode + '/hb'), Date.now()).catch(() => {});
+        }, 5000);
+
         function wire() {
             $('soloBtn').onclick = () => { hide('modeScreen'); window.G.setGameMode('solo'); window.G.setLobbyPhase(null); };
             $('mpBtn').onclick = () => { hide('modeScreen'); show('mpSetup'); window.G.setGameMode(null); };
@@ -699,6 +707,8 @@
                 const d = snap.val() || {}; let any = false;
                 for (const code in d) {
                     const l = d[code]; if (l.status !== 'lobby') continue;
+                    if (!l.hb || Date.now() - l.hb > 15000) continue;
+                    if (l.hostUid && l.players && !l.players[l.hostUid]) continue;
                     const cnt = l.players ? Object.keys(l.players).length : 0; if (cnt >= 4) continue;
                     any = true;
                     const item = document.createElement('div'); item.className = 'lobby-item';
