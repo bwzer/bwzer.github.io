@@ -206,6 +206,7 @@
         let hasKey = false;
         let startTs = 0;
         let canEdit = false;
+        let keysTaken = {}, doorsOpen = {};
 
         function setGridSize(n) {
             GRID = n;
@@ -264,10 +265,17 @@
             ais.forEach(a => a.unlocked = new Set());
         }
 
+        function effTile(x, y) {
+            const t = grid[y][x], k = x + ',' + y;
+            if (t === KEY && keysTaken[k]) return EMPTY;
+            if (t === LOCKED && doorsOpen[k]) return DOOR;
+            return t;
+        }
+
         function drawGrid() {
             ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, WIDTH, HEIGHT);
             for (let y = 0; y < GRID; y++) for (let x = 0; x < GRID; x++) {
-                ctx.fillStyle = TILE_COLORS[grid[y][x]];
+                ctx.fillStyle = TILE_COLORS[effTile(x, y)];
                 ctx.fillRect(x * CELL, y * CELL, CELL, CELL);
                 ctx.strokeStyle = BLACK; ctx.strokeRect(x * CELL, y * CELL, CELL, CELL);
             }
@@ -280,7 +288,7 @@
                 if (dx * dx + dy * dy > R * R) continue;
                 const x = px + dx, y = py + dy;
                 if (x < 0 || y < 0 || x >= GRID || y >= GRID) continue;
-                ctx.fillStyle = TILE_COLORS[grid[y][x]];
+                ctx.fillStyle = TILE_COLORS[effTile(x, y)];
                 ctx.fillRect(x * CELL, y * CELL, CELL, CELL);
                 ctx.strokeStyle = BLACK; ctx.strokeRect(x * CELL, y * CELL, CELL, CELL);
             }
@@ -503,13 +511,13 @@
                     e.preventDefault();
                     const nx = myPos[0] + dx, ny = myPos[1] + dy;
                     if (nx < 0 || ny < 0 || nx >= GRID || ny >= GRID) return;
-                    const t = grid[ny][nx];
+                    const t = effTile(nx, ny);
                     if (t === WALL || t === OBSTACLE) return;
                     if (t === LOCKED && !hasKey) return;
                     if (t === HAZARD) { hasKey = false; myPos = mySpawn.slice(); window.NET.updatePos(myPos); return; }
                     myPos = [nx, ny];
-                    if (t === KEY) hasKey = true;
-                    else if (t === LOCKED) hasKey = false;
+                    if (t === KEY) { hasKey = true; window.NET.takeKey(nx, ny); }
+                    else if (t === LOCKED) { hasKey = false; window.NET.openDoor(nx, ny); }
                     window.NET.updatePos(myPos);
                     if (t === FINISH) { hasKey = false; window.NET.chat(' reached the finish!'); window.NET.updatePos(mySpawn.slice()); myPos = mySpawn.slice(); }
                 }
@@ -536,6 +544,7 @@
             setStartTs(ts) { startTs = ts; },
             setCanEdit(b) { canEdit = b; },
             getCanEdit() { return canEdit; },
+            setKeyDoorState(kt, do_) { keysTaken = kt || {}; doorsOpen = do_ || {}; },
             setMaze(size, flat, kt) {
                 setGridSize(size);
                 grid = Array.from({ length: size }, (_, y) => flat.slice(y * size, (y + 1) * size));
@@ -681,6 +690,7 @@
                     if (sig !== lastMazeSig) { lastMazeSig = sig; window.G.setMaze(d.gridSize, d.grid, d.keyTargets || {}); }
                 }
                 if (d.ai) window.G.setAI(d.ai.x, d.ai.y); else window.G.clearAI();
+                window.G.setKeyDoorState(d.keysTaken, d.doorsOpen);
                 $('objectiveText').textContent = d.objective || '';
                 if (d.status === 'playing' && !started) {
                     started = true;
@@ -750,6 +760,8 @@
 
         window.NET = {
             setSpawn(pos) { if (!lobbyCode) return; set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/spawn'), pos).catch(() => {}); window.G.setRemoteSpawn(myUid, pos); window.G.setMySpawn(pos); },
+            takeKey(x, y) { if (!lobbyCode) return; set(ref(rtdb, 'lobbies/' + lobbyCode + '/keysTaken/' + x + ',' + y), true).catch(() => {}); },
+            openDoor(x, y) { if (!lobbyCode) return; set(ref(rtdb, 'lobbies/' + lobbyCode + '/doorsOpen/' + x + ',' + y), true).catch(() => {}); },
             pushMaze() { if ((!isHost && !window.G.getCanEdit()) || !lobbyCode) return; const m = window.G.getMaze(); set(ref(rtdb, 'lobbies/' + lobbyCode + '/grid'), m.grid).catch(() => {}); set(ref(rtdb, 'lobbies/' + lobbyCode + '/gridSize'), m.size).catch(() => {}); set(ref(rtdb, 'lobbies/' + lobbyCode + '/keyTargets'), m.keyTargets).catch(() => {}); },
             updatePos(pos) { if (!lobbyCode) return; set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/pos'), pos).catch(() => {}); },
             chat(text) { if (!lobbyCode || !text) return; push(ref(rtdb, 'lobbies/' + lobbyCode + '/chat'), { name: myName, text, ts: Date.now() }).catch(() => {}); }
@@ -836,6 +848,8 @@
                     aiRunning = false; aiAgent = null;
                     set(ref(rtdb, 'lobbies/' + lobbyCode + '/status'), 'lobby').catch(() => {});
                     remove(ref(rtdb, 'lobbies/' + lobbyCode + '/ai')).catch(() => {});
+                    remove(ref(rtdb, 'lobbies/' + lobbyCode + '/keysTaken')).catch(() => {});
+                    remove(ref(rtdb, 'lobbies/' + lobbyCode + '/doorsOpen')).catch(() => {});
                 } else {
                     myRole = 'spectator';
                     window.G.setRole('spectator'); window.G.resetLocal();
