@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Easy Sounds</title>
+<style>
+  :root {
+    --bg: #6e28d9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #fff;
+  }
+  h1 { margin: 0 0 8px; font-size: 2rem; }
+  .btns { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+  button {
+    font-size: 1.5rem;
+    font-weight: 700;
+    padding: 20px 40px;
+    border: none;
+    border-radius: 14px;
+    cursor: pointer;
+    background: #fff;
+    color: var(--bg);
+    box-shadow: 0 4px 14px rgba(0,0,0,.25);
+    transition: transform .08s ease, box-shadow .08s ease;
+  }
+  button:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,.3); }
+  button:active { transform: scale(.96); }
+</style>
+</head>
+<body>
+  <h1>Easy Sounds</h1>
+  <div class="btns">
+    <button id="slapBtn">Slap</button>
+    <button id="bellBtn">Handbell</button>
+  </div>
+
+  <script>
+    var slap  = new Audio("slap.mp3");
+    var bell  = new Audio("handbell.mp3");
+
+    document.getElementById("slapBtn").addEventListener("click", function () {
+      slap.currentTime = 0;
+      slap.play();
+    });
+
+    document.getElementById("bellBtn").addEventListener("click", function () {
+      bell.currentTime = 0;
+      bell.play();
+    });
+  </script>
+</body>
+</html>
