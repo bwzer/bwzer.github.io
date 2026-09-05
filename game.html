@@ -35,6 +35,7 @@
         .btn { background: var(--accent); color: #fff; border: none; border-radius: 7px; padding: 10px 18px; font-family: inherit; font-size: 0.95rem; cursor: pointer; margin: 4px; }
         .btn:hover { filter: brightness(1.15); }
         .btn.ghost { background: #2e2140; border: 1px solid #4a3565; }
+        .qc { padding: 6px 10px; font-size: 1.05rem; min-width: 42px; }
         .field { background: #2e2140; border: 1px solid #4a3565; border-radius: 6px; color: #e8e0f0; padding: 8px 10px; font-family: inherit; font-size: 0.95rem; margin: 4px; }
         .status { margin: 10px 0 0; font-size: 0.88rem; min-height: 1.3em; }
         .status.err { color: #ff5f52; }
@@ -54,6 +55,7 @@
         .fb-status { margin-top: 8px; font-size: 0.85rem; color: #9fe6a0; min-height: 1.2em; }
         .fb-status.err { color: #ff5f52; }
         .objective { font-size: 1.15rem; color: #ffd54a; margin: 4px 0; min-height: 1.2em; }
+        .modal { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 30; background: #241b33; border: 1px solid #3a2b50; border-radius: 12px; padding: 22px 24px; max-width: 420px; width: 92%; text-align: center; box-shadow: 0 12px 40px rgba(0,0,0,.55); }
         .ai-cfg { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 6px 0; border: 1px solid #3a2b50; border-radius: 6px; padding: 6px 8px; background: #1e1630; }
         .ai-cfg .lbl { color: #b8a8cc; font-size: 0.85rem; min-width: 30px; }
         .ai-cfg input { flex: 1 1 90px; min-width: 0; background: #2e2140; border: 1px solid #4a3565; border-radius: 5px; color: #e8e0f0; padding: 5px 7px; font-family: inherit; font-size: 0.88rem; }
@@ -74,6 +76,26 @@
     <div id="mpSetup" class="screen hidden">
         <h2>Multiplayer</h2>
         <input id="mpName" class="field" placeholder="Your name" maxlength="16">
+        <div class="lobby-row">
+            <select id="mpEmoji" class="field">
+                <option value="🦊" selected>🦊 Fox</option>
+                <option value="🐸">🐸 Frog</option>
+                <option value="🐢">🐢 Turtle</option>
+                <option value="🐰">🐰 Bunny</option>
+                <option value="🐱">🐱 Cat</option>
+                <option value="👾">👾 Alien</option>
+                <option value="🤖">🤖 Robot</option>
+                <option value="🦄">🦄 Unicorn</option>
+            </select>
+            <select id="mpColor" class="field">
+                <option value="0" selected>Red</option>
+                <option value="1">Blue</option>
+                <option value="2">Yellow</option>
+                <option value="3">Green</option>
+                <option value="4">Orange</option>
+                <option value="5">Purple</option>
+            </select>
+        </div>
         <div class="lobby-row">
             <input id="hostPw" class="field" placeholder="Password (optional)" maxlength="20" style="width:170px">
             <button id="hostBtn" class="btn">Host a lobby</button>
@@ -97,6 +119,14 @@
             <input id="chatInput" class="field" placeholder="chat..." style="flex:1">
             <button id="chatSend" class="btn">Send</button>
         </div>
+        <div class="lobby-row" id="quickChat">
+            <button class="btn ghost qc" data-q="🙂">🙂</button>
+            <button class="btn ghost qc" data-q="👍">👍</button>
+            <button class="btn ghost qc" data-q="❤️">❤️</button>
+            <button class="btn ghost qc" data-q="🚩">🚩</button>
+            <button class="btn ghost qc" data-q="⏳">⏳</button>
+            <button class="btn ghost qc" data-q="🍀">🍀</button>
+        </div>
         <div class="lobby-row">
             <button id="setSpawnBtn" class="btn ghost">Place my spawn</button>
             <button id="readyBtn" class="btn">Ready</button>
@@ -107,6 +137,7 @@
         </div>
         <div class="lobby-row" id="mpAiRow">
             <label class="aicheck">AIs: <select id="mpAiCount" class="field"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option></select></label>
+            <label class="aicheck">Max players: <select id="mpMaxPlayers" class="field"><option value="2">2</option><option value="4" selected>4</option><option value="6">6</option></select></label>
         </div>
         <div id="mpAiConfigs"></div>
         <div class="lobby-row">
@@ -130,6 +161,13 @@
         </div>
         <div id="objectiveText" class="objective"></div>
         <div id="lobbyHint" class="status"></div>
+    </div>
+
+    <div id="resultsModal" class="modal hidden">
+        <h2>🏁 Results</h2>
+        <div id="resultsList" style="text-align:left; margin:10px 0; max-height:60vh; overflow:auto;"></div>
+        <button id="resultsBackBtn" class="btn">Back to lobby</button>
+        <div id="resultsWait" class="status"></div>
     </div>
 
     <div class="wrap">
@@ -245,6 +283,7 @@
         let mpPhase = null;           // 'lobby' | 'playing'
         let mpRole = null;            // 'host' | 'player' | 'spectator'
         let myName = '', myUid = '', isHost = false;
+        let myEmoji = '🦊', playerColors = {};
         let myPos = [0, 0], mySpawn = [0, 0];
         let spawnMode = false;
         let remotePlayers = {};       // uid -> {name,x,y}
@@ -497,7 +536,11 @@
         }
 
         function allUids() { const s = new Set(Object.keys(remotePlayers)); s.add(myUid); return [...s].sort(); }
-        function colorOf(uid) { const i = allUids().indexOf(uid); return PLAYER_COLORS[i >= 0 ? i : 0]; }
+        function colorOf(uid) {
+            const ci = playerColors[uid];
+            if (ci !== undefined && Number.isInteger(ci)) return PLAYER_COLORS[((ci % PLAYER_COLORS.length) + PLAYER_COLORS.length) % PLAYER_COLORS.length];
+            const i = allUids().indexOf(uid); return PLAYER_COLORS[i >= 0 ? i : 0];
+        }
 
         function render() {
             ctx.clearRect(0, 0, SCREEN, SCREEN);
@@ -548,7 +591,7 @@
                 if (!spectating && !inFog(p.x, p.y)) continue;
                 drawPlayer(p.x, p.y, colorOf(uid), p.name, false, p.emoji);
             }
-            if (mpRole === 'player') drawPlayer(myPos[0], myPos[1], colorOf(myUid), myName, true);
+            if (mpRole === 'player') drawPlayer(myPos[0], myPos[1], colorOf(myUid), myName, true, myEmoji);
             for (const i in aiRemoteList) {
                 const p = aiRemoteList[i];
                 if (!p || typeof p.x !== 'number' || typeof p.y !== 'number') continue;
@@ -768,7 +811,7 @@
             window.NET.updatePos(myPos);
             if (effTile(myPos[0], myPos[1]) === FINISH || t === FINISH) {
                 hasKey = false; stunned = false;
-                window.NET.chat(' reached the finish!');
+                window.NET.finish();
                 myPos = mySpawn.slice(); window.NET.updatePos(myPos);
                 hasKey = false;
             }
@@ -812,14 +855,15 @@
             setHost(h) { isHost = h; },
             setMyUid(u) { myUid = u; },
             setMyName(n) { myName = n; },
+            setMyEmoji(e) { myEmoji = e || '🦊'; },
             setMyPos(p) { myPos = p; },
             setMySpawn(p) { mySpawn = p; },
             getLocalSpawn() { return mySpawn; },
             resetLocal() { hasKey = false; stunned = false; },
             setSpawnMode(on) { spawnMode = on; },
-            setRemotePlayer(uid, name, x, y) { remotePlayers[uid] = { name, x, y }; },
+            setRemotePlayer(uid, name, x, y, emoji, colorIdx) { remotePlayers[uid] = { name, x, y, emoji: emoji || '' }; if (Number.isInteger(colorIdx)) playerColors[uid] = colorIdx; },
             setRemoteSpawn(uid, sp) { remoteSpawns[uid] = sp; },
-            removeRemote(uid) { delete remotePlayers[uid]; delete remoteSpawns[uid]; },
+            removeRemote(uid) { delete remotePlayers[uid]; delete remoteSpawns[uid]; delete playerColors[uid]; },
             clearRemote() { remotePlayers = {}; remoteSpawns = {}; },
             setAI(i, x, y, name, method) { aiRemoteList[i] = { x, y, name: name || ('AI ' + (+i + 1)), method }; },
             clearAI() { aiRemoteList = {}; },
@@ -1044,6 +1088,8 @@
         let playing = false, myRole = 'lobby';
         let lobbyPw = '';
         let lastMazeSig = '';
+        let lobbyMax = 4;
+        let gameStartTs = 0, resultsPosted = false, results = null, migrating = false;
 
         function status(el, msg, err) { el.textContent = msg; el.className = 'status ' + (err ? 'err' : 'ok'); }
         function rtErr(e) { const s = (e && e.message) || String(e); return /permission/i.test(s) ? s + ' (check RTDB Rules -> test mode)' : s; }
@@ -1095,10 +1141,10 @@
                 lobbyPw = ($('hostPw').value || '').trim().slice(0, 20);
                 const m = window.G.getMaze();
                 if (!validMaze(m)) { status($('mpStatus'), 'Invalid maze — cannot host', true); return; }
-                const lobbyData = { hostName: String(name).slice(0, 16), hostUid: myUid, gridSize: m.size, grid: m.grid, keyTargets: m.keyTargets || {}, status: 'lobby', objective: '', createdAt: Date.now(), hb: Date.now() };
+                const lobbyData = { hostName: String(name).slice(0, 16), hostUid: myUid, gridSize: m.size, grid: m.grid, keyTargets: m.keyTargets || {}, status: 'lobby', objective: '', maxPlayers: (parseInt($('mpMaxPlayers').value, 10) || 4), createdAt: Date.now(), hb: Date.now() };
                 if (lobbyPw) lobbyData.pw = lobbyPw;
                 await set(ref(rtdb, 'lobbies/' + code), lobbyData);
-                await set(ref(rtdb, 'lobbies/' + code + '/players/' + myUid), { name: String(name).slice(0, 16), isHost: true, role: 'lobby', spawn: [0, 0], connected: true });
+                await set(ref(rtdb, 'lobbies/' + code + '/players/' + myUid), { name: String(name).slice(0, 16), isHost: true, role: 'lobby', spawn: [0, 0], connected: true, emoji: $('mpEmoji').value, colorIdx: parseInt($('mpColor').value, 10) || 0 });
                 onDisconnect(ref(rtdb, 'lobbies/' + code + '/players/' + myUid)).remove();
                 onDisconnect(ref(rtdb, 'lobbies/' + code)).remove();
                 enterLobby(code, name, true);
@@ -1116,10 +1162,10 @@
                 if (lobby.pw && lobby.pw !== pw) { status($('mpStatus'), 'Wrong password', true); return; }
                 if (lobby.status === 'playing') { status($('mpStatus'), 'Game already started', true); return; }
                 const players = lobby.players || {};
-                if (Object.keys(players).length >= 4) { status($('mpStatus'), 'Lobby full', true); return; }
+                if (Object.keys(players).length >= (lobby.maxPlayers || 4)) { status($('mpStatus'), 'Lobby full', true); return; }
                 for (const uid in players) if (players[uid].name === name) { status($('mpStatus'), 'Name already taken', true); return; }
                 lobbyCode = code; isHost = false;
-                await set(ref(rtdb, 'lobbies/' + code + '/players/' + myUid), { name, isHost: false, role: 'lobby', spawn: [0, 0], connected: true });
+                await set(ref(rtdb, 'lobbies/' + code + '/players/' + myUid), { name, isHost: false, role: 'lobby', spawn: [0, 0], connected: true, emoji: $('mpEmoji').value, colorIdx: parseInt($('mpColor').value, 10) || 0 });
                 onDisconnect(ref(rtdb, 'lobbies/' + code + '/players/' + myUid)).remove();
                 enterLobby(code, name, false);
             } catch (e) { status($('mpStatus'), 'Join failed: ' + rtErr(e), true); }
@@ -1129,7 +1175,7 @@
             hide('mpSetup'); show('lobbyScreen');
             $('lobbyCode').textContent = code;
             window.G.setGameMode('mp'); window.G.setLobbyPhase('lobby'); window.G.setRole('lobby');
-            window.G.setHost(host); window.G.setMyUid(myUid); window.G.setMyName(name); window.G.setSpawnMode(false);
+            window.G.setHost(host); window.G.setMyUid(myUid); window.G.setMyName(name); window.G.setMyEmoji($('mpEmoji').value); window.G.setSpawnMode(false);
             started = false; myReady = false; playing = false; myRole = 'lobby';
             window.G.setCanEdit(false); window.G.setStartTs(0);
             $('mpGridSize').value = window.G.getMaze().size;
@@ -1150,6 +1196,8 @@
             onValue(ref(rtdb, 'lobbies/' + code), (snap) => {
                 const d = snap.val();
                 if (!d) { leaveLobby(true); return; }
+                lobbyMax = d.maxPlayers || 4;
+                gameStartTs = d.startTs || 0;
                 if (!isHost && d.grid && d.gridSize) {
                     const sig = d.gridSize + '|' + d.grid.join(',') + '|' + JSON.stringify(d.keyTargets || {});
                     if (sig !== lastMazeSig) { lastMazeSig = sig; window.G.setMaze(d.gridSize, d.grid, d.keyTargets || {}); }
@@ -1157,6 +1205,8 @@
                 if (d.ai) { window.G.clearAI(); for (const i in d.ai) { const a = d.ai[i]; if (a && typeof a.x === 'number' && typeof a.y === 'number') window.G.setAI(i, a.x, a.y, a.name, a.method); } } else window.G.clearAI();
                 window.G.setKeyDoorState(d.keysTaken, d.doorsOpen);
                 $('objectiveText').textContent = d.objective || '';
+                if (d.results && Array.isArray(d.results) && d.results.length) showResults(d.results);
+                else if (!d.results && results) hideResults();
                 if (d.status === 'playing' && !started) {
                     started = true;
                     window.G.setStartTs(d.startTs || 0);
@@ -1165,11 +1215,14 @@
                 } else if (d.status === 'lobby' && started) {
                     started = false; playing = false; myRole = 'lobby';
                     aiRunning = false; window.G.setMPAgents({});
+                    resultsPosted = false; hideResults();
                     window.G.clearAI(); window.G.setLobbyPhase('lobby'); window.G.setRole('lobby'); window.G.setSpawnMode(false); window.G.resetLocal();
                     myReady = false; $('readyBtn').textContent = 'Ready';
                     set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/role'), 'lobby').catch(() => {});
                     set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/pos'), null).catch(() => {});
                     set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/ready'), false).catch(() => {});
+                    set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/finished'), false).catch(() => {});
+                    set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/finishAt'), null).catch(() => {});
                     updateControls();
                 }
             });
@@ -1196,11 +1249,73 @@
                     $('playerList').appendChild(li);
                     if (uid === myUid) window.G.setCanEdit(!!p.canEdit);
                     if (p.spawn) window.G.setRemoteSpawn(uid, p.spawn);
-                    if (p.pos && p.role === 'player') window.G.setRemotePlayer(uid, p.name, p.pos[0], p.pos[1]);
+                    if (p.pos && p.role === 'player') window.G.setRemotePlayer(uid, p.name, p.pos[0], p.pos[1], p.emoji, p.colorIdx);
                 }
-                $('lobbyCount').textContent = count + '/4 players';
+                $('lobbyCount').textContent = count + '/' + (lobbyMax || 4) + ' players';
+                if (isHost && playing) {
+                    const active = Object.values(players).filter(p => p && p.connected !== false && p.role === 'player');
+                    if (active.length && active.every(p => p.finished) && !resultsPosted) {
+                        resultsPosted = true;
+                        const arr = active.map(p => ({
+                            name: String(p.name || '?').slice(0, 16),
+                            emoji: p.emoji || '',
+                            colorIdx: (p.colorIdx === undefined || p.colorIdx === null) ? 0 : p.colorIdx,
+                            time: Math.max(0, (p.finishAt || gameStartTs || Date.now()) - (gameStartTs || Date.now()))
+                        })).sort((a, b) => a.time - b.time);
+                        set(ref(rtdb, 'lobbies/' + code + '/results'), arr).catch(() => { resultsPosted = false; });
+                    }
+                }
+                if (!isHost && !migrating && count > 0 && playing) {
+                    const entries = Object.entries(players).filter(([u, p]) => p && p.connected !== false);
+                    const hasHost = entries.some(([u, p]) => p.isHost === true);
+                    if (!hasHost) {
+                        const pool = entries.filter(([u, p]) => p.role === 'player');
+                        const elig = (pool.length ? pool : entries);
+                        elig.sort((a, b) => (a[0] < b[0] ? -1 : 1));
+                        const [nhu, nh] = elig[0];
+                        if (nhu === myUid) {
+                            migrating = true;
+                            isHost = true; window.G.setHost(true);
+                            set(ref(rtdb, 'lobbies/' + code + '/hostUid'), nhu).catch(() => {});
+                            set(ref(rtdb, 'lobbies/' + code + '/players/' + nhu + '/isHost'), true).catch(() => {});
+                            const sp = window.G.getLocalSpawn() || findSpawn() || [0, 0];
+                            get(ref(rtdb, 'lobbies/' + code + '/ai')).then(sn => {
+                                if (sn.exists()) {
+                                    const d = sn.val(); const agents = {};
+                                    for (const i in d) {
+                                        const a = d[i];
+                                        if (a && typeof a.x === 'number' && typeof a.y === 'number') agents[i] = { name: (a.name || ('AI ' + (+i + 1))).slice(0, 16), method: a.method || 'qlearning', pos: [a.x, a.y], unlocked: new Set(), Q: makeQTable() };
+                                    }
+                                    window.G.setMPAgents(agents); aiRunning = true;
+                                }
+                            }).catch(() => { window.G.setMPAgents({}); });
+                            set(ref(rtdb, 'lobbies/' + code + '/players/' + myUid + '/pos'), sp).catch(() => {});
+                            updateControls();
+                        }
+                    }
+                }
             });
+
+            }
+
+        function showResults(arr) {
+            results = arr;
+            const el = $('resultsList'); el.innerHTML = '';
+            arr.forEach((r, i) => {
+                const row = document.createElement('div');
+                row.style.cssText = 'padding:6px 2px; border-bottom:1px solid #3a2b50; display:flex; align-items:center; gap:8px;';
+                const rank = document.createElement('span'); rank.style.width = '26px'; rank.style.color = '#ffd54a'; rank.style.fontWeight = '700'; rank.textContent = (i + 1) + '.';
+                const em = document.createElement('span'); em.style.fontSize = '1.15rem'; em.textContent = r.emoji || '';
+                const nm = document.createElement('span'); nm.style.flex = '1'; nm.style.overflow = 'hidden'; nm.style.textOverflow = 'ellipsis'; nm.style.whiteSpace = 'nowrap'; nm.textContent = r.name || '?';
+                const ts = document.createElement('span'); ts.style.color = '#9fe6a0'; ts.style.fontVariantNumeric = 'tabular-nums'; ts.textContent = (r.time / 1000).toFixed(1) + 's';
+                row.appendChild(rank); row.appendChild(em); row.appendChild(nm); row.appendChild(ts);
+                el.appendChild(row);
+            });
+            $('resultsBackBtn').style.display = isHost ? '' : 'none';
+            $('resultsWait').textContent = isHost ? '' : 'Waiting for host to return to lobby…';
+            show('resultsModal');
         }
+        function hideResults() { results = null; hide('resultsModal'); }
 
         function listenChat(code) {
             const box = $('chatBox');
@@ -1230,6 +1345,12 @@
             pushMaze() { pushMazeThrottled(); },
             updatePos(pos) { if (!lobbyCode) return; updatePosThrottled(pos); },
             chat(text) { if (!lobbyCode || !rtdb || !text) return; const t = String(text).slice(0, 256); if (!t.trim()) return; push(ref(rtdb, 'lobbies/' + lobbyCode + '/chat'), { name: myName, text: t, ts: Date.now() }).catch(() => {}); },
+            finish() {
+                if (!lobbyCode || !myUid) return;
+                set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/finished'), true).catch(() => {});
+                set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/finishAt'), Date.now()).catch(() => {});
+                window.NET.chat(' reached the finish!');
+            },
             stop() {
                 if (!lobbyCode) return;
                 if (isHost) {
@@ -1238,6 +1359,8 @@
                     remove(ref(rtdb, 'lobbies/' + lobbyCode + '/ai')).catch(() => {});
                     remove(ref(rtdb, 'lobbies/' + lobbyCode + '/keysTaken')).catch(() => {});
                     remove(ref(rtdb, 'lobbies/' + lobbyCode + '/doorsOpen')).catch(() => {});
+                    set(ref(rtdb, 'lobbies/' + lobbyCode + '/results'), null).catch(() => {});
+                    resultsPosted = false; hideResults();
                 } else {
                     myRole = 'spectator';
                     window.G.setRole('spectator'); window.G.resetLocal();
@@ -1253,6 +1376,8 @@
             playing = true; myRole = role;
             set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/role'), role).catch(() => {});
             set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/pos'), spawn).catch(() => {});
+            set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/finished'), false).catch(() => {});
+            set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/finishAt'), null).catch(() => {});
             window.G.setRole(role); window.G.setLobbyPhase('playing'); window.G.setSpawnMode(false);
             window.G.setMyPos(spawn.slice()); window.G.setMySpawn(spawn.slice());
             window.G.resetLocal();
@@ -1306,10 +1431,10 @@
                         const l = d[code]; if (l.status !== 'lobby') continue;
                         if (!l.hb || Date.now() - l.hb > 15000) continue;
                         if (l.hostUid && l.players && !l.players[l.hostUid]) continue;
-                        const cnt = l.players ? Object.keys(l.players).length : 0; if (cnt >= 4) continue;
+                        const cnt = l.players ? Object.keys(l.players).length : 0; if (cnt >= (l.maxPlayers || 4)) continue;
                         any = true;
                         const item = document.createElement('div'); item.className = 'lobby-item';
-                        item.textContent = code + ' - ' + l.hostName + (l.pw ? ' [private]' : '') + ' (' + cnt + '/4)';
+                        item.textContent = code + ' - ' + l.hostName + (l.pw ? ' [private]' : '') + ' (' + cnt + '/' + (l.maxPlayers || 4) + ')';
                         item.onclick = () => { $('joinCode').value = code; if (l.pw) $('joinPw').focus(); };
                         list.appendChild(item);
                     }
@@ -1319,6 +1444,7 @@
                 const sendChat = () => { const t = $('chatInput').value.trim(); if (!t) return; window.NET.chat(t); $('chatInput').value = ''; };
                 $('chatSend').onclick = sendChat;
                 $('chatInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });
+                $('quickChat').querySelectorAll('.qc').forEach(b => { b.onclick = () => window.NET.chat(b.dataset.q); });
 
                 $('setSpawnBtn').onclick = () => {
                     spawnMode = !spawnMode; window.G.setSpawnMode(spawnMode);
@@ -1343,6 +1469,12 @@
                 $('copyLinkBtn').onclick = () => { const v = $('lobbyLink').value; if (navigator.clipboard) navigator.clipboard.writeText(v).catch(() => {}); else { $('lobbyLink').select(); document.execCommand('copy'); } };
                 $('stopBtn').onclick = () => window.NET.stop();
                 $('leaveLobbyBtn').onclick = () => leaveLobby(false);
+                $('resultsBackBtn').onclick = () => {
+                    if (!isHost) return;
+                    resultsPosted = false;
+                    set(ref(rtdb, 'lobbies/' + lobbyCode + '/results'), null).catch(() => {});
+                    set(ref(rtdb, 'lobbies/' + lobbyCode + '/status'), 'lobby').catch(() => {});
+                };
             }
 
             $('saveBtn').onclick = () => saveGrid($('mazeName').value.trim() || 'maze1');
