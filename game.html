@@ -114,7 +114,15 @@
         </div>
         <div class="lobby-row" id="mpGridRow">
             <span style="color:#b8a8cc">Grid size</span>
-            <input id="mpGridSize" class="field" type="number" min="3" max="150" style="width:70px">
+            <input id="mpGridSize" class="field" type="number" min="3" max="60" style="width:70px">
+        </div>
+        <div class="lobby-row" id="mpGenRow">
+            <button id="mpGenBtn" class="btn ghost">Generate maze</button>
+            <select id="mpGenDiff" class="field">
+                <option value="easy">Easy</option>
+                <option value="normal" selected>Normal</option>
+                <option value="hard">Hard</option>
+            </select>
         </div>
         <div class="lobby-row" id="linkRow" style="display:none">
             <input id="lobbyLink" class="field" readonly style="flex:1">
@@ -157,10 +165,19 @@
             </div>
             <h2>Grid size</h2>
             <div class="save-row">
-                <input id="gridSizeInput" class="field" type="number" min="3" max="150" value="20" style="flex:1">
+                <input id="gridSizeInput" class="field" type="number" min="3" max="60" value="20" style="flex:1">
             </div>
             <div class="save-row">
                 <button id="recenterBtn" class="btn ghost" type="button">Recenter view</button>
+            </div>
+            <h2>Random maze</h2>
+            <div class="save-row">
+                <button id="genBtn" class="btn ghost" type="button">Generate maze</button>
+                <select id="genDiff" class="field">
+                    <option value="easy">Easy</option>
+                    <option value="normal" selected>Normal</option>
+                    <option value="hard">Hard</option>
+                </select>
             </div>
             <h2>Time limit (seconds)</h2>
             <div class="save-row">
@@ -850,6 +867,142 @@
         function getHostAIName(i) { const el = document.getElementById('mpAiConfigs'); if (!el) return ''; const e = el.querySelector('[data-ai-name="AI ' + (i + 1) + '"]'); return e ? (e.value || '').trim() : ''; }
         function getHostAIMethod(i) { const el = document.getElementById('mpAiConfigs'); if (!el) return 'qlearning'; const e = el.querySelector('[data-ai-method="AI ' + (i + 1) + '"]'); return e ? e.value : 'qlearning'; }
         buildSoloAiConfigs();
+
+        // ---- random maze generator ----
+        function generateMaze(size, diff) {
+            if (size < 5) size = 5; if (size > 60) size = 60;
+            for (let attempt = 0; attempt < 12; attempt++) {
+                const res = buildMazeOnce(size, diff);
+                if (res) return res;
+            }
+            const N = size;
+            const g = Array(N * N).fill(EMPTY);
+            for (let i = 0; i < N; i++) { g[i] = WALL; g[i * N] = WALL; g[(N - 1) * N + i] = WALL; g[i * N + (N - 1)] = WALL; }
+            g[1 * N + 1] = SPAWN; g[1 * N + (N - 2)] = FINISH;
+            return { size: N, grid: g, keyTargets: {} };
+        }
+
+        function buildMazeOnce(N, diff) {
+            const idx = (c, r) => r * N + c;
+            const inb = (c, r) => c >= 0 && r >= 0 && c < N && r < N;
+            const moves = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+            const passable = (t) => t === EMPTY || t === SPAWN || t === FINISH || t === DOOR || t === KEY || t === HAZARD || t === TELEPORTER || t === ICE || t === BOOST || t === SLOW;
+            const g = Array(N * N).fill(WALL);
+            g[idx(1, 1)] = EMPTY;
+            const stack = [[1, 1]];
+            const dirs = [[0, -2], [0, 2], [-2, 0], [2, 0]];
+            while (stack.length) {
+                const [cx, cy] = stack[stack.length - 1];
+                const opts = [];
+                for (const [dx, dy] of dirs) { const nx = cx + dx, ny = cy + dy; if (inb(nx, ny) && g[idx(nx, ny)] === WALL) opts.push([nx, ny]); }
+                if (!opts.length) { stack.pop(); continue; }
+                const [nx, ny] = opts[Math.floor(Math.random() * opts.length)];
+                g[idx(cx + (nx - cx) / 2, cy + (ny - cy) / 2)] = EMPTY;
+                g[idx(nx, ny)] = EMPTY;
+                stack.push([nx, ny]);
+            }
+            let loops = 0, guard = 0;
+            const loopTarget = Math.floor(N / 4) + 2;
+            while (loops < loopTarget && guard++ < N * N * 2) {
+                const a = 1 + Math.floor(Math.random() * (N - 2)), b = 1 + Math.floor(Math.random() * (N - 2));
+                if (g[idx(a, b)] !== WALL) continue;
+                const horiz = inb(a - 1, b) && inb(a + 1, b) && g[idx(a - 1, b)] === EMPTY && g[idx(a + 1, b)] === EMPTY;
+                const vert = inb(a, b - 1) && inb(a, b + 1) && g[idx(a, b - 1)] === EMPTY && g[idx(a, b + 1)] === EMPTY;
+                if (horiz || vert) { g[idx(a, b)] = EMPTY; loops++; }
+            }
+            const reach = new Set();
+            { const q = [idx(1, 1)]; reach.add(idx(1, 1));
+              while (q.length) { const cur = q.shift(); const c = cur % N, r = Math.floor(cur / N);
+                for (const [dx, dy] of moves) { const nx = c + dx, ny = r + dy; if (!inb(nx, ny)) continue; const ni = idx(nx, ny);
+                  if (reach.has(ni) || g[ni] === WALL || !passable(g[ni])) continue; reach.add(ni); q.push(ni); } } }
+            const sIdx = idx(1, 1);
+            let far = sIdx, farD = -1;
+            { const dist = {}; dist[sIdx] = 0; const q = [sIdx];
+              while (q.length) { const cur = q.shift(); if (dist[cur] > farD) { farD = dist[cur]; far = cur; }
+                const c = cur % N, r = Math.floor(cur / N);
+                for (const [dx, dy] of moves) { const nx = c + dx, ny = r + dy; if (!inb(nx, ny)) continue; const ni = idx(nx, ny);
+                  if (!reach.has(ni) || dist[ni] !== undefined) continue; dist[ni] = dist[cur] + 1; q.push(ni); } } }
+            g[far] = FINISH; g[sIdx] = SPAWN;
+            const cellsList = [...reach].filter(i => i !== sIdx && i !== far);
+            const keyCount = diff === 'easy' ? 1 : diff === 'hard' ? 3 : 2;
+            const keyTargets = {};
+            const occupied = new Set([sIdx]);
+            for (let k = 0; k < keyCount; k++) {
+                let placed = false;
+                for (let t = 0; t < 60 && !placed; t++) {
+                    const di = cellsList[Math.floor(Math.random() * cellsList.length)];
+                    if (occupied.has(di) || g[di] !== EMPTY) continue;
+                    const c = di % N, r = Math.floor(di / N);
+                    const nbs = [];
+                    for (const [dx, dy] of moves) { const nx = c + dx, ny = r + dy; if (!inb(nx, ny)) continue; const ni = idx(nx, ny); if (reach.has(ni) && g[ni] === EMPTY && !occupied.has(ni)) nbs.push(ni); }
+                    if (!nbs.length) continue;
+                    g[di] = LOCKED;
+                    const seen = new Set(); const q = [sIdx]; seen.add(sIdx);
+                    while (q.length) { const cur = q.shift(); const cc = cur % N, rr = Math.floor(cur / N);
+                        for (const [dx, dy] of moves) { const nx = cc + dx, ny = rr + dy; if (!inb(nx, ny)) continue; const ni = idx(nx, ny);
+                          if (seen.has(ni) || g[ni] === WALL || g[ni] === LOCKED || g[ni] === OBSTACLE) continue; seen.add(ni); q.push(ni); } }
+                    if (seen.size >= reach.size - 2) {
+                        const keyCell = nbs[Math.floor(Math.random() * nbs.length)];
+                        g[keyCell] = KEY;
+                        keyTargets[c + ',' + r] = [keyCell % N, Math.floor(keyCell / N)];
+                        occupied.add(di); occupied.add(keyCell);
+                        placed = true;
+                    } else { g[di] = EMPTY; }
+                }
+                if (!placed) return null;
+            }
+            occupied.add(far);
+            function scatter(count, tile, avoidSpawnNb) {
+                let placed = 0, sg = 0;
+                while (placed < count && sg++ < N * N * 2) {
+                    const i = cellsList[Math.floor(Math.random() * cellsList.length)];
+                    if (occupied.has(i) || g[i] !== EMPTY) continue;
+                    if (avoidSpawnNb) { const c = i % N, r = Math.floor(i / N); if (Math.abs(c - 1) + Math.abs(r - 1) <= 1) continue; }
+                    g[i] = tile; occupied.add(i); placed++;
+                }
+            }
+            scatter(diff === 'easy' ? Math.round(N * 0.3) : diff === 'hard' ? Math.round(N * 1.2) : Math.round(N * 0.6), OBSTACLE, true);
+            scatter(diff === 'easy' ? Math.round(N * 0.15) : diff === 'hard' ? Math.round(N * 0.6) : Math.round(N * 0.3), HAZARD, false);
+            const tpN = diff === 'easy' ? 0 : diff === 'hard' ? 3 : 2;
+            { let p = 0, tg = 0;
+              while (p < tpN * 2 && tg++ < N * N * 2) {
+                const i1 = cellsList[Math.floor(Math.random() * cellsList.length)];
+                if (occupied.has(i1) || g[i1] !== EMPTY) continue;
+                const c1 = i1 % N, r1 = Math.floor(i1 / N);
+                for (let t = 0; t < 30; t++) {
+                    const i2 = cellsList[Math.floor(Math.random() * cellsList.length)];
+                    if (occupied.has(i2) || g[i2] !== EMPTY) continue;
+                    const c2 = i2 % N, r2 = Math.floor(i2 / N);
+                    if (Math.abs(c1 - c2) + Math.abs(r1 - r2) < N * 0.4) continue;
+                    g[i1] = TELEPORTER; g[i2] = TELEPORTER; occupied.add(i1); occupied.add(i2); p += 2; break;
+                }
+              } }
+            const tileN = diff === 'easy' ? 0 : diff === 'hard' ? 5 : 2;
+            scatter(tileN, ICE, true); scatter(tileN, BOOST, true); scatter(tileN, SLOW, true);
+            const seen = new Set(); const q = [sIdx]; seen.add(sIdx);
+            while (q.length) { const cur = q.shift(); const c = cur % N, r = Math.floor(cur / N);
+                for (const [dx, dy] of moves) { const nx = c + dx, ny = r + dy; if (!inb(nx, ny)) continue; const ni = idx(nx, ny);
+                  if (seen.has(ni) || g[ni] === WALL || g[ni] === LOCKED || g[ni] === OBSTACLE) continue; seen.add(ni); q.push(ni); } }
+            if (!seen.has(far)) return null;
+            if (seen.size < Math.floor(reach.size * 0.6)) return null;
+            for (const k in keyTargets) {
+                const [kx, ky] = k.split(',').map(Number); const [dx, dy] = keyTargets[k];
+                if (g[ky * N + kx] !== KEY) return null;
+                if (g[dy * N + dx] !== LOCKED) return null;
+            }
+            return { size: N, grid: g, keyTargets };
+        }
+
+        function generateAndApply(isMp) {
+            const size = Math.min(Math.max(GRID, 5), 60);
+            const diffEl = document.getElementById(isMp ? 'mpGenDiff' : 'genDiff');
+            const diff = diffEl ? diffEl.value : 'normal';
+            const m = generateMaze(size, diff);
+            window.G.setMaze(m.size, m.grid, m.keyTargets);
+            recenterCam();
+            if (isMp && window.NET) window.NET.pushMaze();
+        }
+        document.getElementById('genBtn').onclick = () => generateAndApply(false);
     </script>
 
     <script type="module">
@@ -906,6 +1059,7 @@
             $('mpAiConfigs').style.display = (lobby && isHost) ? '' : 'none';
             $('objectiveInput').style.display = isHost ? '' : 'none';
             $('mpGridRow').style.display = (lobby && isHost) ? '' : 'none';
+            $('mpGenRow').style.display = (lobby && isHost) ? '' : 'none';
             $('stopBtn').style.display = (playing && (isHost || myRole === 'player')) ? '' : 'none';
         }
 
@@ -1183,6 +1337,7 @@
                     set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/role'), 'spectator').catch(() => {});
                 };
                 $('mpAiCount').onchange = () => { aiCount = parseInt($('mpAiCount').value, 10) || 1; buildMpAiConfigs(); };
+                $('mpGenBtn').onclick = () => generateAndApply(true);
                 buildMpAiConfigs();
                 $('objectiveInput').onchange = (e) => { set(ref(rtdb, 'lobbies/' + lobbyCode + '/objective'), e.target.value).catch(() => {}); };
                 $('copyLinkBtn').onclick = () => { const v = $('lobbyLink').value; if (navigator.clipboard) navigator.clipboard.writeText(v).catch(() => {}); else { $('lobbyLink').select(); document.execCommand('copy'); } };
