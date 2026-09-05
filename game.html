@@ -149,11 +149,18 @@
                 <div><span style="background:#e65a00"></span>Locked door</div>
                 <div><span style="background:#ffc800"></span>Key</div>
                 <div><span style="background:#00e5ff"></span>Hazard (spike)</div>
+                <div><span style="background:#ff4dd8"></span>Teleporter</div>
+                <div><span style="background:#c8ecff"></span>Ice</div>
+                <div><span style="background:#ffab1f"></span>Boost (jump)</div>
+                <div><span style="background:#7a6f9e"></span>Slow</div>
                 <div><span style="background:#960096"></span>AI</div>
             </div>
             <h2>Grid size</h2>
             <div class="save-row">
                 <input id="gridSizeInput" class="field" type="number" min="3" max="150" value="20" style="flex:1">
+            </div>
+            <div class="save-row">
+                <button id="recenterBtn" class="btn ghost" type="button">Recenter view</button>
             </div>
             <h2>Time limit (seconds)</h2>
             <div class="save-row">
@@ -185,14 +192,20 @@
         const FPS = 10;
         const MIN_GRID = 3, MAX_GRID = 150;
         const FOG_RADIUS = 4;
-        const EMPTY = 0, WALL = 1, OBSTACLE = 2, FINISH = 3, SPAWN = 4, DOOR = 5, LOCKED = 6, KEY = 7, HAZARD = 8;
-        const TILE_COLORS = ['#ffffff', '#969696', '#ff0000', '#00ff00', '#009696', '#8b4513', '#e65a00', '#ffc800', '#00e5ff'];
+        const EMPTY = 0, WALL = 1, OBSTACLE = 2, FINISH = 3, SPAWN = 4, DOOR = 5, LOCKED = 6, KEY = 7, HAZARD = 8, TELEPORTER = 9, ICE = 10, BOOST = 11, SLOW = 12;
+        const MAX_TILE = SLOW;
+        const TILE_COLORS = ['#ffffff', '#969696', '#ff0000', '#00ff00', '#009696', '#8b4513', '#e65a00', '#ffc800', '#00e5ff', '#ff4dd8', '#c8ecff', '#ffab1f', '#7a6f9e'];
         const BLACK = '#000000', PURPLE = '#960096';
         const PLAYER_COLORS = ['#ff5f52', '#4aa3ff', '#ffd54a', '#66e066', '#ff9f4a', '#c58fff'];
 
         const canvas = document.getElementById('game');
         const ctx = canvas.getContext('2d');
 
+        const SCREEN = 600;
+        let camX = 0, camY = 0, camTgtX = 0, camTgtY = 0;
+        let camDX = 0, camDY = 0;
+        let spectatorUid = null;
+        let stunned = false;
         let GRID = 20, CELL = 30;
         let WIDTH = CELL * GRID, HEIGHT = CELL * GRID;
         let grid = Array.from({ length: GRID }, () => Array(GRID).fill(EMPTY));
@@ -228,12 +241,15 @@
 
         function setGridSize(n) {
             GRID = n;
-            CELL = (n * 30 <= 900) ? 30 : Math.max(4, Math.floor(900 / n));
+            CELL = 30;
             WIDTH = CELL * n; HEIGHT = CELL * n;
-            canvas.width = WIDTH; canvas.height = HEIGHT;
+            canvas.width = SCREEN; canvas.height = SCREEN;
             grid = Array.from({ length: n }, () => Array(n).fill(EMPTY));
             for (const a of ais) a.Q = makeQTable();
             for (const a of Object.values(mpAgents)) { a.Q = makeQTable(); a.unlocked = new Set(); }
+            const mx = Math.max(0, WIDTH - SCREEN), my2 = Math.max(0, HEIGHT - SCREEN);
+            camTgtX = Math.max(0, Math.min(mx, camTgtX)); camTgtY = Math.max(0, Math.min(my2, camTgtY));
+            camX = camTgtX; camY = camTgtY;
             document.getElementById('title').textContent = n + 'x' + n + ' Grid Game';
             const gi = document.getElementById('gridSizeInput'); if (gi) gi.value = n;
             const mg = document.getElementById('mpGridSize'); if (mg) mg.value = n;
@@ -290,6 +306,11 @@
                 if (door) agent.unlocked.add(door[0] + ',' + door[1]);
                 grid[ny][nx] = EMPTY;
             }
+            else if (target === TELEPORTER) {
+                reward = 4;
+                const p = teleportPartner(nx, ny);
+                if (p) { nx = p[0]; ny = p[1]; }
+            }
             else if (nx === finish[0] && ny === finish[1]) { reward = 10; }
             if (agent.method === 'sarsa') {
                 const nxt = chooseAction([nx, ny], agent);
@@ -299,6 +320,59 @@
             }
             agent.pos = [nx, ny];
             return (nx === finish[0] && ny === finish[1]);
+        }
+
+        function teleportPartner(x, y) {
+            for (let yy = 0; yy < GRID; yy++) for (let xx = 0; xx < GRID; xx++) {
+                if (grid[yy][xx] === TELEPORTER && !(xx === x && yy === y)) return [xx, yy];
+            }
+            return null;
+        }
+
+        function setCamTarget(px, py, lookX, lookY) {
+            const mx = Math.max(0, GRID * CELL - SCREEN), my2 = Math.max(0, GRID * CELL - SCREEN);
+            camTgtX = Math.max(0, Math.min(mx, px + lookX - SCREEN / 2));
+            camTgtY = Math.max(0, Math.min(my2, py + lookY - SCREEN / 2));
+        }
+
+        function recenterCam() {
+            const mx = Math.max(0, GRID * CELL - SCREEN), my2 = Math.max(0, GRID * CELL - SCREEN);
+            camTgtX = mx / 2; camTgtY = my2 / 2;
+            camX = camTgtX; camY = camTgtY;
+        }
+
+        function panCam(sx, sy) {
+            const mx = Math.max(0, GRID * CELL - SCREEN), my2 = Math.max(0, GRID * CELL - SCREEN);
+            camTgtX = Math.max(0, Math.min(mx, camTgtX + sx));
+            camTgtY = Math.max(0, Math.min(my2, camTgtY + sy));
+            camX = camTgtX; camY = camTgtY;
+        }
+
+        function updateCamera() {
+            if (gameMode === 'solo') {
+                if (mode === 'simulation' && ais.length) {
+                    let sx = 0, sy = 0;
+                    for (const a of ais) { sx += a.pos[0] * CELL + CELL / 2; sy += a.pos[1] * CELL + CELL / 2; }
+                    setCamTarget(Math.round(sx / ais.length), Math.round(sy / ais.length), 0, 0);
+                }
+            } else if (gameMode === 'mp' && mpPhase === 'playing') {
+                if (mpRole === 'spectator' && spectatorUid && remotePlayers[spectatorUid] && typeof remotePlayers[spectatorUid].x === 'number') {
+                    const p = remotePlayers[spectatorUid];
+                    setCamTarget(p.x * CELL + CELL / 2, p.y * CELL + CELL / 2, 0, 0);
+                } else if (mpRole === 'player') {
+                    setCamTarget(myPos[0] * CELL + CELL / 2, myPos[1] * CELL + CELL / 2, camDX * CELL * 0.6, camDY * CELL * 0.6);
+                }
+            }
+            camX += (camTgtX - camX) * 0.2;
+            camY += (camTgtY - camY) * 0.2;
+            const mx = Math.max(0, GRID * CELL - SCREEN), my2 = Math.max(0, GRID * CELL - SCREEN);
+            camTgtX = Math.max(0, Math.min(mx, camTgtX)); camTgtY = Math.max(0, Math.min(my2, camTgtY));
+            camX = Math.max(0, Math.min(mx, camX)); camY = Math.max(0, Math.min(my2, camY));
+        }
+
+        function cellFromEvent(e) {
+            const rect = canvas.getBoundingClientRect();
+            return [Math.floor((e.clientX - rect.left + camX) / CELL), Math.floor((e.clientY - rect.top + camY) / CELL)];
         }
 
         function resetLevel() {
@@ -314,11 +388,14 @@
         }
 
         function drawGrid() {
-            ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, WIDTH, HEIGHT);
-            for (let y = 0; y < GRID; y++) for (let x = 0; x < GRID; x++) {
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, SCREEN, SCREEN);
+            const x0 = Math.max(0, Math.floor(camX / CELL)), y0 = Math.max(0, Math.floor(camY / CELL));
+            const x1 = Math.min(GRID - 1, Math.ceil((camX + SCREEN) / CELL)), y1 = Math.min(GRID - 1, Math.ceil((camY + SCREEN) / CELL));
+            for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+                const px = x * CELL - camX, py = y * CELL - camY;
                 ctx.fillStyle = TILE_COLORS[effTile(x, y)];
-                ctx.fillRect(x * CELL, y * CELL, CELL, CELL);
-                ctx.strokeStyle = BLACK; ctx.strokeRect(x * CELL, y * CELL, CELL, CELL);
+                ctx.fillRect(px, py, CELL, CELL);
+                ctx.strokeStyle = BLACK; ctx.strokeRect(px, py, CELL, CELL);
             }
         }
 
@@ -348,16 +425,18 @@
         }
 
         function drawFog(px, py) {
-            ctx.fillStyle = 'rgba(10,10,22,0.88)'; ctx.fillRect(0, 0, WIDTH, HEIGHT);
+            ctx.fillStyle = 'rgba(10,10,22,0.88)'; ctx.fillRect(0, 0, SCREEN, SCREEN);
             const R = FOG_RADIUS;
             for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
                 if (dx * dx + dy * dy > R * R) continue;
                 const x = px + dx, y = py + dy;
                 if (x < 0 || y < 0 || x >= GRID || y >= GRID) continue;
                 if (!visible(x, y)) continue;
+                const sx = x * CELL - camX, sy = y * CELL - camY;
+                if (sx + CELL < 0 || sy + CELL < 0 || sx > SCREEN || sy > SCREEN) continue;
                 ctx.fillStyle = TILE_COLORS[effTile(x, y)];
-                ctx.fillRect(x * CELL, y * CELL, CELL, CELL);
-                ctx.strokeStyle = BLACK; ctx.strokeRect(x * CELL, y * CELL, CELL, CELL);
+                ctx.fillRect(sx, sy, CELL, CELL);
+                ctx.strokeStyle = BLACK; ctx.strokeRect(sx, sy, CELL, CELL);
             }
         }
 
@@ -365,16 +444,18 @@
             return visible(x, y);
         }
 
-        function drawPlayer(x, y, color, name, isSelf) {
-            const cx = x * CELL, cy = y * CELL;
+        function drawPlayer(x, y, color, name, isSelf, emoji) {
+            const cx = x * CELL - camX, cy = y * CELL - camY;
+            if (cx + CELL < 0 || cy + CELL < 0 || cx > SCREEN || cy > SCREEN) return;
             ctx.fillStyle = color; ctx.fillRect(cx + 2, cy + 2, CELL - 4, CELL - 4);
             if (isSelf) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(cx + 3, cy + 3, CELL - 6, CELL - 6); ctx.lineWidth = 1; }
+            if (emoji) { ctx.font = '18px -apple-system, "Segoe UI", sans-serif'; ctx.textAlign = 'center'; ctx.fillText(emoji, cx + CELL / 2, cy + CELL / 2 + 6); }
             ctx.fillStyle = '#000'; ctx.font = 'bold 13px -apple-system, "Segoe UI", sans-serif'; ctx.textAlign = 'center';
             ctx.fillText(name, cx + CELL / 2, cy - 3); ctx.textAlign = 'left';
         }
 
         function drawSpawnMarker(x, y, color, name) {
-            const cx = x * CELL, cy = y * CELL;
+            const cx = x * CELL - camX, cy = y * CELL - camY;
             ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.strokeRect(cx + 4, cy + 4, CELL - 8, CELL - 8); ctx.lineWidth = 1;
             ctx.fillStyle = color; ctx.font = '10px -apple-system, "Segoe UI", sans-serif'; ctx.textAlign = 'center';
             ctx.fillText(name, cx + CELL / 2, cy - 2); ctx.textAlign = 'left';
@@ -383,15 +464,18 @@
         function drawEditorOverlays() {
             if (pendingKey) {
                 ctx.strokeStyle = BLACK; ctx.lineWidth = 3;
-                ctx.strokeRect(pendingKey[0] * CELL, pendingKey[1] * CELL, CELL, CELL); ctx.lineWidth = 1;
+                ctx.strokeRect(pendingKey[0] * CELL - camX, pendingKey[1] * CELL - camY, CELL, CELL); ctx.lineWidth = 1;
                 ctx.fillStyle = BLACK; ctx.font = '16px -apple-system, "Segoe UI", sans-serif';
                 ctx.fillText('Point the key: click a door to lock it (Esc to cancel)', 10, 20);
             }
             for (const k in keyTargets) {
                 const [kx, ky] = k.split(',').map(Number); const [dx, dy] = keyTargets[k];
+                const x0 = kx * CELL + CELL / 2 - camX, y0 = ky * CELL + CELL / 2 - camY;
+                const x1 = dx * CELL + CELL / 2 - camX, y1 = dy * CELL + CELL / 2 - camY;
+                if (Math.max(x0, x1) < 0 || Math.max(y0, y1) < 0 || Math.min(x0, x1) > SCREEN || Math.min(y0, y1) > SCREEN) continue;
                 ctx.strokeStyle = BLACK; ctx.lineWidth = 2; ctx.beginPath();
-                ctx.moveTo(kx * CELL + CELL / 2, ky * CELL + CELL / 2);
-                ctx.lineTo(dx * CELL + CELL / 2, dy * CELL + CELL / 2); ctx.stroke(); ctx.lineWidth = 1;
+                ctx.moveTo(x0, y0);
+                ctx.lineTo(x1, y1); ctx.stroke(); ctx.lineWidth = 1;
             }
         }
 
@@ -399,8 +483,9 @@
         function colorOf(uid) { const i = allUids().indexOf(uid); return PLAYER_COLORS[i >= 0 ? i : 0]; }
 
         function render() {
-            ctx.clearRect(0, 0, WIDTH, HEIGHT);
+            ctx.clearRect(0, 0, SCREEN, SCREEN);
             if (!gameMode) return;
+            updateCamera();
 
             if (gameMode === 'solo') {
                 drawGrid();
@@ -444,7 +529,7 @@
                 if (uid === myUid && !spectating) continue;
                 const p = remotePlayers[uid];
                 if (!spectating && !inFog(p.x, p.y)) continue;
-                drawPlayer(p.x, p.y, colorOf(uid), p.name, false);
+                drawPlayer(p.x, p.y, colorOf(uid), p.name, false, p.emoji);
             }
             if (mpRole === 'player') drawPlayer(myPos[0], myPos[1], colorOf(myUid), myName, true);
             for (const i in aiRemoteList) {
@@ -455,20 +540,23 @@
             if (Date.now() < startTs + 3000) {
                 const n = Math.ceil((startTs + 3000 - Date.now()) / 1000);
                 ctx.fillStyle = BLACK; ctx.font = 'bold 48px -apple-system, "Segoe UI", sans-serif'; ctx.textAlign = 'center';
-                ctx.fillText(String(n), WIDTH / 2, HEIGHT / 2); ctx.textAlign = 'left';
+                ctx.fillText(String(n), SCREEN / 2, SCREEN / 2); ctx.textAlign = 'left';
             } else if (Date.now() < startTs + 3600) {
                 ctx.fillStyle = '#00aa00'; ctx.font = 'bold 48px -apple-system, "Segoe UI", sans-serif'; ctx.textAlign = 'center';
-                ctx.fillText('GO!', WIDTH / 2, HEIGHT / 2); ctx.textAlign = 'left';
+                ctx.fillText('GO!', SCREEN / 2, SCREEN / 2); ctx.textAlign = 'left';
             }
             if (mpRole !== 'spectator') {
                 ctx.fillStyle = BLACK; ctx.font = '14px -apple-system, "Segoe UI", sans-serif';
                 ctx.fillText('Arrow keys / WASD to move', 10, 20);
                 if (hasKey) { ctx.fillStyle = '#8b4513'; ctx.fillText('Key held', 10, 40); }
+            } else if (spectatorUid) {
+                ctx.fillStyle = BLACK; ctx.font = '14px -apple-system, "Segoe UI", sans-serif';
+                ctx.fillText('Watching: ' + ((remotePlayers[spectatorUid] && remotePlayers[spectatorUid].name) || spectatorUid) + '  ( , / . to switch)', 10, 20);
             }
         }
 
         function tick() {
-            if (!gameMode) { ctx.clearRect(0, 0, WIDTH, HEIGHT); return; }
+            if (!gameMode) { ctx.clearRect(0, 0, SCREEN, SCREEN); return; }
             render();
             if (gameMode === 'solo' && mode === 'simulation' && !simWaiting) {
                 let finished = false;
@@ -502,7 +590,11 @@
                     grid[door[1]][door[0]] = DOOR;
                 }
             }
-            else if (grid[y][x] === HAZARD) grid[y][x] = EMPTY;
+            else if (grid[y][x] === HAZARD) grid[y][x] = TELEPORTER;
+            else if (grid[y][x] === TELEPORTER) grid[y][x] = ICE;
+            else if (grid[y][x] === ICE) grid[y][x] = BOOST;
+            else if (grid[y][x] === BOOST) grid[y][x] = SLOW;
+            else if (grid[y][x] === SLOW) grid[y][x] = EMPTY;
         }
 
         function deleteTile(x, y) {
@@ -521,7 +613,7 @@
             if (!gameMode) return;
             if (e.button !== 0) return;
             const rect = canvas.getBoundingClientRect();
-            const x = Math.floor((e.clientX - rect.left) / CELL), y = Math.floor((e.clientY - rect.top) / CELL);
+            const x = Math.floor((e.clientX - rect.left + camX) / CELL), y = Math.floor((e.clientY - rect.top + camY) / CELL);
             if (x < 0 || x >= GRID || y < 0 || y >= GRID) return;
             if (gameMode === 'solo') { if (mode === 'editor') soloClick(x, y); return; }
             if (mpPhase !== 'lobby') return;
@@ -535,7 +627,11 @@
                 else if (grid[y][x] === DOOR) grid[y][x] = LOCKED;
                 else if (grid[y][x] === LOCKED) grid[y][x] = KEY;
                 else if (grid[y][x] === KEY) grid[y][x] = HAZARD;
-                else if (grid[y][x] === HAZARD) grid[y][x] = EMPTY;
+                else if (grid[y][x] === HAZARD) grid[y][x] = TELEPORTER;
+                else if (grid[y][x] === TELEPORTER) grid[y][x] = ICE;
+                else if (grid[y][x] === ICE) grid[y][x] = BOOST;
+                else if (grid[y][x] === BOOST) grid[y][x] = SLOW;
+                else if (grid[y][x] === SLOW) grid[y][x] = EMPTY;
                 window.NET.pushMaze();
             }
         });
@@ -544,7 +640,7 @@
             if (!gameMode) return;
             e.preventDefault();
             const rect = canvas.getBoundingClientRect();
-            const x = Math.floor((e.clientX - rect.left) / CELL), y = Math.floor((e.clientY - rect.top) / CELL);
+            const x = Math.floor((e.clientX - rect.left + camX) / CELL), y = Math.floor((e.clientY - rect.top + camY) / CELL);
             if (x < 0 || x >= GRID || y < 0 || y >= GRID) return;
             if (gameMode === 'solo') { if (mode === 'editor') deleteTile(x, y); return; }
             if (mpPhase !== 'lobby' || (!isHost && !canEdit) || spawnMode) return;
@@ -554,7 +650,7 @@
 
         window.addEventListener('keydown', (e) => {
             if (gameMode === 'solo') {
-                if (e.key === '1') mode = 'editor';
+                if (e.key === '1') { mode = 'editor'; }
                 else if (e.key === '2') {
                     const spawn = findTile(SPAWN), finish = findTile(FINISH);
                     if (!spawn || !finish) { hintText = 'Need a Spawn AND a Finish to start'; hintUntil = Date.now() + 2000; }
@@ -566,9 +662,38 @@
                 }
                 else if (e.key === 'Escape') pendingKey = null;
                 else if (e.key === ' ') { if (mode === 'simulation' && simWaiting) { simWaiting = false; startTime = Date.now(); } }
+                else if (mode === 'editor') {
+                    if (e.key === 'ArrowUp') panCam(0, -24);
+                    else if (e.key === 'ArrowDown') panCam(0, 24);
+                    else if (e.key === 'ArrowLeft') panCam(-24, 0);
+                    else if (e.key === 'ArrowRight') panCam(24, 0);
+                    else if (e.key === 'c' || e.key === 'C') recenterCam();
+                }
+                return;
+            }
+            if (mpPhase === 'lobby') {
+                if (e.target && e.target.tagName === 'INPUT') return;
+                if (e.key === 'ArrowUp') panCam(0, -24);
+                else if (e.key === 'ArrowDown') panCam(0, 24);
+                else if (e.key === 'ArrowLeft') panCam(-24, 0);
+                else if (e.key === 'ArrowRight') panCam(24, 0);
+                else if (e.key === 'c' || e.key === 'C') recenterCam();
                 return;
             }
             if (mpPhase === 'playing' && e.key === 'Escape') { window.NET.stop(); return; }
+            if (mpPhase === 'playing' && mpRole === 'spectator') {
+                if (e.key === ',' || e.key === '.') {
+                    const list = allUids();
+                    if (!list.length) return;
+                    let idx = list.indexOf(spectatorUid);
+                    if (idx < 0) idx = -1;
+                    idx += (e.key === '.') ? 1 : -1;
+                    if (idx < 0) idx = list.length - 1;
+                    if (idx >= list.length) idx = 0;
+                    spectatorUid = list[idx];
+                }
+                return;
+            }
             if (mpPhase === 'playing' && mpRole === 'player') {
                 if (Date.now() < startTs + 3000) return;
                 if (e.target && e.target.tagName === 'INPUT') return;
@@ -578,26 +703,64 @@
                 else if (k === 'ArrowDown' || k === 's' || k === 'S') dy = 1;
                 else if (k === 'ArrowLeft' || k === 'a' || k === 'A') dx = -1;
                 else if (k === 'ArrowRight' || k === 'd' || k === 'D') dx = 1;
-                if (dx || dy) {
-                    e.preventDefault();
-                    const nx = myPos[0] + dx, ny = myPos[1] + dy;
-                    if (nx < 0 || ny < 0 || nx >= GRID || ny >= GRID) return;
-                    const t = effTile(nx, ny);
-                    if (t === WALL || t === OBSTACLE) return;
-                    if (t === LOCKED && !hasKey) return;
-                    if (t === HAZARD) { hasKey = false; myPos = mySpawn.slice(); window.NET.updatePos(myPos); return; }
-                    myPos = [nx, ny];
-                    if (t === KEY) { hasKey = true; window.NET.takeKey(nx, ny); }
-                    else if (t === LOCKED) { hasKey = false; window.NET.openDoor(nx, ny); }
-                    window.NET.updatePos(myPos);
-                    if (t === FINISH) { hasKey = false; window.NET.chat(' reached the finish!'); window.NET.updatePos(mySpawn.slice()); myPos = mySpawn.slice(); }
-                }
+                if (dx || dy) { e.preventDefault(); movePlayer(dx, dy); }
             }
         });
+
+        function movePlayer(dx, dy) {
+            if (gameMode !== 'mp' || mpPhase !== 'playing' || mpRole !== 'player') return;
+            if (Date.now() < startTs + 3000) return;
+            if (stunned) { stunned = false; return; }
+            camDX = dx; camDY = dy;
+            let nx = myPos[0] + dx, ny = myPos[1] + dy;
+            if (nx < 0 || ny < 0 || nx >= GRID || ny >= GRID) return;
+            let t = effTile(nx, ny);
+            if (t === WALL || t === OBSTACLE) return;
+            if (t === LOCKED && !hasKey) return;
+            let keyPicked = false, doorOpened = false;
+            if (t === HAZARD) { hasKey = false; stunned = false; myPos = mySpawn.slice(); window.NET.updatePos(myPos); return; }
+            if (t === TELEPORTER) {
+                const p = teleportPartner(nx, ny);
+                myPos = p ? p : [nx, ny];
+            } else if (t === KEY) {
+                myPos = [nx, ny]; keyPicked = true;
+            } else if (t === LOCKED) {
+                myPos = [nx, ny]; doorOpened = true;
+            } else {
+                myPos = [nx, ny];
+            }
+            if (t === BOOST) {
+                const bx = myPos[0] + dx, by = myPos[1] + dy;
+                if (bx >= 0 && by >= 0 && bx < GRID && by < GRID) {
+                    const bt = effTile(bx, by);
+                    if (bt !== WALL && bt !== OBSTACLE && bt !== HAZARD && !(bt === LOCKED && !hasKey)) myPos = [bx, by];
+                }
+            } else if (t === SLOW) {
+                stunned = true;
+            } else if (t === ICE) {
+                let guard = 0;
+                while (guard++ < 16) {
+                    const ix = myPos[0] + dx, iy = myPos[1] + dy;
+                    if (ix < 0 || iy < 0 || ix >= GRID || iy >= GRID) break;
+                    if (effTile(ix, iy) === ICE) myPos = [ix, iy];
+                    else break;
+                }
+            }
+            if (keyPicked) { hasKey = true; window.NET.takeKey(nx, ny); }
+            else if (doorOpened) { hasKey = false; window.NET.openDoor(nx, ny); }
+            window.NET.updatePos(myPos);
+            if (effTile(myPos[0], myPos[1]) === FINISH || t === FINISH) {
+                hasKey = false; stunned = false;
+                window.NET.chat(' reached the finish!');
+                myPos = mySpawn.slice(); window.NET.updatePos(myPos);
+                hasKey = false;
+            }
+        }
 
         setInterval(tick, 1000 / FPS);
 
         document.getElementById('aiCount').onchange = (e) => { aiCount = parseInt(e.target.value, 10) || 1; buildSoloAiConfigs(); };
+        document.getElementById('recenterBtn').onclick = () => recenterCam();
 
         document.getElementById('gridSizeInput').onchange = (e) => {
             const n = parseInt(e.target.value, 10);
@@ -635,7 +798,7 @@
             setMyPos(p) { myPos = p; },
             setMySpawn(p) { mySpawn = p; },
             getLocalSpawn() { return mySpawn; },
-            resetLocal() { hasKey = false; },
+            resetLocal() { hasKey = false; stunned = false; },
             setSpawnMode(on) { spawnMode = on; },
             setRemotePlayer(uid, name, x, y) { remotePlayers[uid] = { name, x, y }; },
             setRemoteSpawn(uid, sp) { remoteSpawns[uid] = sp; },
@@ -706,7 +869,7 @@
         const updatePosThrottled = throttleF((pos) => { if (!lobbyCode || !rtdb) return; if (!validPos(pos)) return; set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/pos'), pos).catch(() => {}); }, 50);
 
         function clampGrid(v) { return Math.max(0, Math.min(GRID - 1, v)); }
-        function validMaze(m) { if (!m || typeof m.size !== 'number' || m.size < MIN_GRID || m.size > MAX_GRID) return false; if (!Array.isArray(m.grid) || m.grid.length !== m.size * m.size) return false; for (const v of m.grid) if (!Number.isInteger(v) || v < EMPTY || v > HAZARD) return false; const kt = m.keyTargets || {}; for (const k in kt) { const p = k.split(',').map(Number); const d = kt[k]; if (p.length !== 2 || d.length !== 2) return false; for (const n of p.concat(d)) if (!Number.isInteger(n) || n < 0 || n >= m.size) return false; } return true; }
+        function validMaze(m) { if (!m || typeof m.size !== 'number' || m.size < MIN_GRID || m.size > MAX_GRID) return false; if (!Array.isArray(m.grid) || m.grid.length !== m.size * m.size) return false; for (const v of m.grid) if (!Number.isInteger(v) || v < EMPTY || v > MAX_TILE) return false; const kt = m.keyTargets || {}; for (const k in kt) { const p = k.split(',').map(Number); const d = kt[k]; if (p.length !== 2 || d.length !== 2) return false; for (const n of p.concat(d)) if (!Number.isInteger(n) || n < 0 || n >= m.size) return false; } return true; }
         function validPos(p) { return Array.isArray(p) && p.length === 2 && Number.isInteger(p[0]) && Number.isInteger(p[1]) && p[0] >= 0 && p[0] < GRID && p[1] >= 0 && p[1] < GRID; }
 
         const app = ((firebaseAllowed) ? initializeApp({
