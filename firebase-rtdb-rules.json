@@ -15,7 +15,7 @@
           ".validate": "newData.isNumber() && newData.val() >= 3 && newData.val() <= 150"
         },
         "grid": {
-          ".validate": "newData.isArray()"
+          ".validate": "newData.isObject()"
         },
         "keyTargets": {
           ".validate": "newData.isObject()"
@@ -79,10 +79,10 @@
               ".validate": "newData.isString() && (newData.val() === 'lobby' || newData.val() === 'player' || newData.val() === 'spectator')"
             },
             "spawn": {
-              ".validate": "newData.isArray() && newData.val().length === 2"
+              ".validate": "newData.isObject() && newData.numChildren() === 2 && newData.child('0').isNumber() && newData.child('1').isNumber()"
             },
             "pos": {
-              ".validate": "newData.isArray() && newData.val().length === 2"
+              ".validate": "newData.isObject() && newData.numChildren() === 2 && newData.child('0').isNumber() && newData.child('1').isNumber()"
             },
             "ready": {
               ".validate": "newData.isBoolean()"
