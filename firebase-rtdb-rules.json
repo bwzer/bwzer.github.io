@@ -22,8 +22,12 @@
           "$key": { ".validate": "newData.isBoolean()" }
         },
         "ai": {
-          "x": { ".validate": "newData.isNumber()" },
-          "y": { ".validate": "newData.isNumber()" }
+          "$index": {
+            "x": { ".validate": "newData.isNumber()" },
+            "y": { ".validate": "newData.isNumber()" },
+            "name": { ".validate": "newData.isString() && newData.val().length <= 16" },
+            "method": { ".validate": "newData.isString() && newData.val().length <= 24" }
+          }
         },
         "players": {
           "$uid": {

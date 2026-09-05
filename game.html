@@ -54,6 +54,10 @@
         .fb-status { margin-top: 8px; font-size: 0.85rem; color: #9fe6a0; min-height: 1.2em; }
         .fb-status.err { color: #ff5f52; }
         .objective { font-size: 1.15rem; color: #ffd54a; margin: 4px 0; min-height: 1.2em; }
+        .ai-cfg { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 6px 0; border: 1px solid #3a2b50; border-radius: 6px; padding: 6px 8px; background: #1e1630; }
+        .ai-cfg .lbl { color: #b8a8cc; font-size: 0.85rem; min-width: 30px; }
+        .ai-cfg input { flex: 1 1 90px; min-width: 0; background: #2e2140; border: 1px solid #4a3565; border-radius: 5px; color: #e8e0f0; padding: 5px 7px; font-family: inherit; font-size: 0.88rem; }
+        .ai-cfg select { background: #2e2140; border: 1px solid #4a3565; border-radius: 5px; color: #e8e0f0; padding: 5px 6px; font-family: inherit; font-size: 0.88rem; }
         .aicheck { color: #b8a8cc; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 4px; }
     </style>
 </head>
@@ -98,10 +102,13 @@
             <button id="readyBtn" class="btn">Ready</button>
             <button id="startBtn" class="btn">Start game</button>
             <button id="spectateBtn" class="btn">Spectate</button>
-            <label class="aicheck"><input type="checkbox" id="aiToggle" checked> Add 1 AI</label>
             <button id="stopBtn" class="btn" style="background:#d43f3f">Stop</button>
             <button id="leaveLobbyBtn" class="btn ghost">Leave</button>
         </div>
+        <div class="lobby-row" id="mpAiRow">
+            <label class="aicheck">AIs: <select id="mpAiCount" class="field"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option></select></label>
+        </div>
+        <div id="mpAiConfigs"></div>
         <div class="lobby-row">
             <input id="objectiveInput" class="field" placeholder="Objective (optional)" style="flex:1">
         </div>
@@ -160,6 +167,8 @@
                     <option value="3">3 AIs</option>
                 </select>
             </div>
+            <h2>AI setup (solo)</h2>
+            <div id="soloAiConfigs"></div>
             <h2>Save / Load</h2>
             <div class="save-row">
                 <input id="mazeName" type="text" placeholder="maze name" value="maze1">
@@ -187,7 +196,7 @@
         let GRID = 20, CELL = 30;
         let WIDTH = CELL * GRID, HEIGHT = CELL * GRID;
         let grid = Array.from({ length: GRID }, () => Array(GRID).fill(EMPTY));
-        let Q = Array.from({ length: GRID }, () => Array.from({ length: GRID }, () => [0, 0, 0, 0]));
+        function makeQTable() { return Array.from({ length: GRID }, () => Array.from({ length: GRID }, () => [0, 0, 0, 0])); }
 
         // solo
         let mode = 'editor';
@@ -210,7 +219,8 @@
         let spawnMode = false;
         let remotePlayers = {};       // uid -> {name,x,y}
         let remoteSpawns = {};        // uid -> [x,y]
-        let aiRemote = null;
+        let aiRemoteList = {};        // index -> {x,y,name,method}
+        let mpAgents = {};            // index -> {name,method,Q,pos,unlocked}
         let hasKey = false;
         let startTs = 0;
         let canEdit = false;
@@ -222,7 +232,8 @@
             WIDTH = CELL * n; HEIGHT = CELL * n;
             canvas.width = WIDTH; canvas.height = HEIGHT;
             grid = Array.from({ length: n }, () => Array(n).fill(EMPTY));
-            Q = Array.from({ length: n }, () => Array.from({ length: n }, () => [0, 0, 0, 0]));
+            for (const a of ais) a.Q = makeQTable();
+            for (const a of Object.values(mpAgents)) { a.Q = makeQTable(); a.unlocked = new Set(); }
             document.getElementById('title').textContent = n + 'x' + n + ' Grid Game';
             const gi = document.getElementById('gridSizeInput'); if (gi) gi.value = n;
             const mg = document.getElementById('mpGridSize'); if (mg) mg.value = n;
@@ -233,9 +244,25 @@
             return null;
         }
 
-        function chooseAction(pos) {
-            if (Math.random() < epsilon) return Math.floor(Math.random() * 4);
-            const q = Q[pos[0]][pos[1]];
+        function chooseAction(pos, agent) {
+            const greedy = agent.method === 'greedy';
+            if (!greedy && Math.random() < epsilon) return Math.floor(Math.random() * 4);
+            if (greedy) {
+                const finish = findTile(FINISH);
+                let bestA = 0, bestD = Infinity;
+                const moves = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+                for (let i = 0; i < 4; i++) {
+                    const nx = pos[0] + moves[i][0], ny = pos[1] + moves[i][1];
+                    if (nx < 0 || ny < 0 || nx >= GRID || ny >= GRID) continue;
+                    const t = grid[ny][nx];
+                    if (t === WALL || t === OBSTACLE || t === HAZARD) continue;
+                    if (t === LOCKED && !agent.unlocked.has(nx + ',' + ny)) continue;
+                    const d = Math.abs(nx - finish[0]) + Math.abs(ny - finish[1]);
+                    if (d < bestD) { bestD = d; bestA = i; }
+                }
+                return bestA;
+            }
+            const q = agent.Q[pos[0]][pos[1]];
             let best = 0; for (let i = 1; i < 4; i++) if (q[i] > q[best]) best = i;
             return best;
         }
@@ -244,7 +271,7 @@
             const finish = findTile(FINISH);
             if (!finish) return false;
             let x = agent.pos[0], y = agent.pos[1];
-            const action = chooseAction([x, y]);
+            const action = chooseAction([x, y], agent);
             let nx = x, ny = y;
             if (action === 0) { if (y > 0) ny--; }
             else if (action === 1) { if (y < GRID - 1) ny++; }
@@ -264,7 +291,12 @@
                 grid[ny][nx] = EMPTY;
             }
             else if (nx === finish[0] && ny === finish[1]) { reward = 10; }
-            Q[x][y][action] += alpha * (reward + gamma * Math.max(...Q[nx][ny]) - Q[x][y][action]);
+            if (agent.method === 'sarsa') {
+                const nxt = chooseAction([nx, ny], agent);
+                agent.Q[x][y][action] += alpha * (reward + gamma * agent.Q[nx][ny][nxt] - agent.Q[x][y][action]);
+            } else {
+                agent.Q[x][y][action] += alpha * (reward + gamma * Math.max(...agent.Q[nx][ny]) - agent.Q[x][y][action]);
+            }
             agent.pos = [nx, ny];
             return (nx === finish[0] && ny === finish[1]);
         }
@@ -373,7 +405,7 @@
             if (gameMode === 'solo') {
                 drawGrid();
                 if (mode === 'simulation') {
-                    for (const a of ais) drawPlayer(a.pos[0], a.pos[1], PURPLE, 'AI', false);
+                    for (const a of ais) drawPlayer(a.pos[0], a.pos[1], PURPLE, a.name || 'AI', false);
                     ctx.fillStyle = BLACK; ctx.font = '24px -apple-system, "Segoe UI", sans-serif';
                     ctx.fillText('Episode: ' + episode, 10, 26);
                     ctx.fillText('Time Left: ' + Math.max(0, Math.floor(timeLimit)), 10, 56);
@@ -415,7 +447,11 @@
                 drawPlayer(p.x, p.y, colorOf(uid), p.name, false);
             }
             if (mpRole === 'player') drawPlayer(myPos[0], myPos[1], colorOf(myUid), myName, true);
-            if (aiRemote && (spectating || inFog(aiRemote.x, aiRemote.y))) drawPlayer(aiRemote.x, aiRemote.y, PURPLE, 'AI', false);
+            for (const i in aiRemoteList) {
+                const p = aiRemoteList[i];
+                if (!p || typeof p.x !== 'number' || typeof p.y !== 'number') continue;
+                if (spectating || inFog(p.x, p.y)) drawPlayer(p.x, p.y, PURPLE, p.name || ('AI ' + (+i + 1)), false);
+            }
             if (Date.now() < startTs + 3000) {
                 const n = Math.ceil((startTs + 3000 - Date.now()) / 1000);
                 ctx.fillStyle = BLACK; ctx.font = 'bold 48px -apple-system, "Segoe UI", sans-serif'; ctx.textAlign = 'center';
@@ -524,7 +560,7 @@
                     if (!spawn || !finish) { hintText = 'Need a Spawn AND a Finish to start'; hintUntil = Date.now() + 2000; }
                     else {
                         mode = 'simulation'; startGrid = grid.map(r => r.slice());
-                        ais = []; for (let i = 0; i < aiCount; i++) ais.push({ pos: spawn.slice(), unlocked: new Set() });
+                        ais = []; for (let i = 0; i < aiCount; i++) ais.push({ name: (getSoloAIName(i) || ('AI ' + (i + 1))), method: getSoloAIMethod(i), pos: spawn.slice(), unlocked: new Set(), Q: makeQTable() });
                         episode = 1; simWaiting = true;
                     }
                 }
@@ -561,7 +597,7 @@
 
         setInterval(tick, 1000 / FPS);
 
-        document.getElementById('aiCount').onchange = (e) => { aiCount = parseInt(e.target.value, 10) || 1; };
+        document.getElementById('aiCount').onchange = (e) => { aiCount = parseInt(e.target.value, 10) || 1; buildSoloAiConfigs(); };
 
         document.getElementById('gridSizeInput').onchange = (e) => {
             const n = parseInt(e.target.value, 10);
@@ -605,8 +641,8 @@
             setRemoteSpawn(uid, sp) { remoteSpawns[uid] = sp; },
             removeRemote(uid) { delete remotePlayers[uid]; delete remoteSpawns[uid]; },
             clearRemote() { remotePlayers = {}; remoteSpawns = {}; },
-            setAI(x, y) { aiRemote = { x, y }; },
-            clearAI() { aiRemote = null; },
+            setAI(i, x, y, name, method) { aiRemoteList[i] = { x, y, name: name || ('AI ' + (+i + 1)), method }; },
+            clearAI() { aiRemoteList = {}; },
             moveMPAI(agent) {
                 const saved = grid;
                 grid = grid.map(r => r.slice());
@@ -614,8 +650,43 @@
                 const pos = agent.pos.slice();
                 grid = saved;
                 return pos;
-            }
+            },
+            getMPAgents() { return mpAgents; },
+            setMPAgents(ag) { mpAgents = ag || {}; },
         };
+
+        // ---- AI config UI builders ----
+        const AI_METHODS = [['qlearning', 'Q-Learning'], ['sarsa', 'SARSA'], ['greedy', 'Greedy']];
+        function aiCfgRow(sub) {
+            const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return '<div class="ai-cfg">' +
+                '<span class="lbl">' + esc(sub) + '</span>' +
+                '<input type="text" maxlength="16" placeholder="name" data-ai-name="' + sub + '">' +
+                '<select data-ai-method="' + sub + '">' +
+                AI_METHODS.map(ms => '<option value="' + ms[0] + '">' + esc(ms[1]) + '</option>').join('') +
+                '</select></div>';
+        }
+        function buildSoloAiConfigs() {
+            const el = document.getElementById('soloAiConfigs'); if (!el) return;
+            let html = ''; for (let i = 0; i < aiCount; i++) html += aiCfgRow('AI ' + (i + 1));
+            el.innerHTML = html;
+            const nameEls = el.querySelectorAll('[data-ai-name]');
+            nameEls.forEach((inp, i) => inp.value = 'AI ' + (i + 1));
+        }
+        function buildMpAiConfigs() {
+            const el = document.getElementById('mpAiConfigs'); if (!el) return;
+            const n = parseInt(document.getElementById('mpAiCount').value, 10) || 1;
+            document.getElementById('mpAiCount').value = String(n);
+            let html = ''; for (let i = 0; i < n; i++) html += aiCfgRow('AI ' + (i + 1));
+            el.innerHTML = html;
+            const nameEls = el.querySelectorAll('[data-ai-name]');
+            nameEls.forEach((inp, i) => inp.value = 'AI ' + (i + 1));
+        }
+        function getSoloAIName(i) { const el = document.getElementById('soloAiConfigs'); if (!el) return ''; const e = el.querySelector('[data-ai-name="AI ' + (i + 1) + '"]'); return e ? (e.value || '').trim() : ''; }
+        function getSoloAIMethod(i) { const el = document.getElementById('soloAiConfigs'); if (!el) return 'qlearning'; const e = el.querySelector('[data-ai-method="AI ' + (i + 1) + '"]'); return e ? e.value : 'qlearning'; }
+        function getHostAIName(i) { const el = document.getElementById('mpAiConfigs'); if (!el) return ''; const e = el.querySelector('[data-ai-name="AI ' + (i + 1) + '"]'); return e ? (e.value || '').trim() : ''; }
+        function getHostAIMethod(i) { const el = document.getElementById('mpAiConfigs'); if (!el) return 'qlearning'; const e = el.querySelector('[data-ai-method="AI ' + (i + 1) + '"]'); return e ? e.value : 'qlearning'; }
+        buildSoloAiConfigs();
     </script>
 
     <script type="module">
@@ -623,22 +694,37 @@
         import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
         import { getDatabase, ref, set, get, push, onValue, onChildAdded, onDisconnect, remove, update } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-database.js";
 
-        const app = initializeApp({
+        const ALLOWED_HOSTS = ['bwzer.github.io', 'localhost', '127.0.0.1'];
+        const hostOk = ALLOWED_HOSTS.includes(location.hostname);
+        const referrerOk = (() => { try { const r = new URL(document.referrer); return ALLOWED_HOSTS.includes(r.hostname); } catch (e) { return false; } })();
+        const firebaseAllowed = hostOk || referrerOk;
+        function denyFirebase(reason) { const el = document.getElementById('fbStatus') || document.getElementById('mpStatus'); if (el) { el.textContent = reason; el.className = 'fb-status err'; } console.warn('Firebase blocked: ' + reason); }
+        if (!firebaseAllowed) { denyFirebase('Firebase is blocked on this domain.'); }
+
+        function throttleF(fn, ms) { let last = 0, pending = null; return (...a) => { const now = Date.now(); if (now - last >= ms) { last = now; if (pending) { clearTimeout(pending); pending = null; } return fn(...a); } if (!pending) pending = setTimeout(() => { pending = null; last = Date.now(); fn(...a); }, ms - (now - last)); }; }
+        const pushMazeThrottled = throttleF(() => { if (!firebaseAllowed || !lobbyCode) return; if ((!isHost && !window.G.getCanEdit())) return; const m = window.G.getMaze(); if (!validMaze(m)) return; set(ref(rtdb, 'lobbies/' + lobbyCode + '/grid'), m.grid).catch(() => {}); set(ref(rtdb, 'lobbies/' + lobbyCode + '/gridSize'), m.size).catch(() => {}); set(ref(rtdb, 'lobbies/' + lobbyCode + '/keyTargets'), m.keyTargets).catch(() => {}); }, 200);
+        const updatePosThrottled = throttleF((pos) => { if (!lobbyCode || !rtdb) return; if (!validPos(pos)) return; set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/pos'), pos).catch(() => {}); }, 50);
+
+        function clampGrid(v) { return Math.max(0, Math.min(GRID - 1, v)); }
+        function validMaze(m) { if (!m || typeof m.size !== 'number' || m.size < MIN_GRID || m.size > MAX_GRID) return false; if (!Array.isArray(m.grid) || m.grid.length !== m.size * m.size) return false; for (const v of m.grid) if (!Number.isInteger(v) || v < EMPTY || v > HAZARD) return false; const kt = m.keyTargets || {}; for (const k in kt) { const p = k.split(',').map(Number); const d = kt[k]; if (p.length !== 2 || d.length !== 2) return false; for (const n of p.concat(d)) if (!Number.isInteger(n) || n < 0 || n >= m.size) return false; } return true; }
+        function validPos(p) { return Array.isArray(p) && p.length === 2 && Number.isInteger(p[0]) && Number.isInteger(p[1]) && p[0] >= 0 && p[0] < GRID && p[1] >= 0 && p[1] < GRID; }
+
+        const app = ((firebaseAllowed) ? initializeApp({
             apiKey: "AIzaSyAJj2dFGnHZJjA1jASQ8Gsk_s8Ix2OfDDg",
             authDomain: "bwzer-game.firebaseapp.com",
             projectId: "bwzer-game",
             storageBucket: "bwzer-game.firebasestorage.app",
             messagingSenderId: "83897975367",
             appId: "1:83897975367:web:b29e1cc57ab4773dc86762"
-        });
-        const db = getFirestore(app);
-        const rtdb = getDatabase(app, "https://bwzer-game-default-rtdb.asia-southeast1.firebasedatabase.app");
+        }) : null);
+        const db = app ? getFirestore(app) : null;
+        const rtdb = app ? getDatabase(app, "https://bwzer-game-default-rtdb.asia-southeast1.firebasedatabase.app") : null;
 
         const $ = id => document.getElementById(id);
         const myUid = (crypto.randomUUID && crypto.randomUUID()) || ('u' + Math.random().toString(36).slice(2));
         let myName = '', lobbyCode = '', isHost = false, spawnMode = false;
-        let aiAgent = null, aiRunning = false;
-        let aiEnabled = true, started = false, myReady = false;
+        let aiRunning = false;
+        let aiCount = 1, started = false, myReady = false;
         let playing = false, myRole = 'lobby';
         let lobbyPw = '';
         let lastMazeSig = '';
@@ -653,7 +739,8 @@
             $('readyBtn').style.display = (lobby && !isHost) ? '' : 'none';
             $('startBtn').style.display = (lobby && isHost) ? '' : 'none';
             $('spectateBtn').style.display = lobby ? '' : 'none';
-            $('aiToggle').style.display = (lobby && isHost) ? '' : 'none';
+            $('mpAiRow').style.display = (lobby && isHost) ? '' : 'none';
+            $('mpAiConfigs').style.display = (lobby && isHost) ? '' : 'none';
             $('objectiveInput').style.display = isHost ? '' : 'none';
             $('mpGridRow').style.display = (lobby && isHost) ? '' : 'none';
             $('stopBtn').style.display = (playing && (isHost || myRole === 'player')) ? '' : 'none';
@@ -662,14 +749,20 @@
         // ---- solo Firestore save/load ----
         function fbStatus(msg, err) { const el = $('fbStatus'); if (el) { el.textContent = msg; el.className = 'fb-status' + (err ? ' err' : ''); } }
         async function saveGrid(name) {
-            try { const m = window.G.getMaze(); await addDoc(collection(db, "grids"), { name, size: m.size, grid: m.grid, keyTargets: m.keyTargets, savedAt: new Date() }); fbStatus('Saved: ' + name); }
-            catch (e) { fbStatus('Save failed: ' + e.message, true); }
+            if (!db) { fbStatus('Firebase is blocked on this domain', true); return; }
+            try {
+                const n = String(name || '').trim().slice(0, 60); const m = window.G.getMaze();
+                if (!validMaze(m)) { fbStatus('Invalid maze — cannot save', true); return; }
+                await addDoc(collection(db, "grids"), { name: n, size: m.size, grid: m.grid, keyTargets: m.keyTargets, savedAt: new Date() }); fbStatus('Saved: ' + n);
+            } catch (e) { fbStatus('Save failed: ' + e.message, true); }
         }
         async function loadGrid(name) {
+            if (!db) { fbStatus('Firebase is blocked on this domain', true); return; }
             try {
                 const snap = await getDocs(collection(db, "grids")); let found = null;
                 snap.forEach(d => { if (d.data().name === name) found = d.data(); });
                 if (!found) { fbStatus('Not found: ' + name, true); return; }
+                if (!validMaze({ size: found.size, grid: found.grid, keyTargets: found.keyTargets || {} })) { fbStatus('Saved maze is invalid', true); return; }
                 window.G.setMaze(found.size, found.grid, found.keyTargets || {});
                 fbStatus('Loaded: ' + name);
             } catch (e) { fbStatus('Load failed: ' + e.message, true); }
@@ -679,14 +772,16 @@
         function newCode() { const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < 4; i++) s += c[Math.floor(Math.random() * c.length)]; return s; }
 
         async function hostLobby(name) {
+            if (!rtdb) { status($('mpStatus'), 'Firebase is blocked on this domain', true); return; }
             try {
                 const code = newCode(); lobbyCode = code; isHost = true;
-                lobbyPw = ($('hostPw').value || '').trim();
+                lobbyPw = ($('hostPw').value || '').trim().slice(0, 20);
                 const m = window.G.getMaze();
-                const lobbyData = { hostName: name, hostUid: myUid, gridSize: m.size, grid: m.grid, keyTargets: m.keyTargets || {}, status: 'lobby', objective: '', createdAt: Date.now(), hb: Date.now() };
+                if (!validMaze(m)) { status($('mpStatus'), 'Invalid maze — cannot host', true); return; }
+                const lobbyData = { hostName: String(name).slice(0, 16), hostUid: myUid, gridSize: m.size, grid: m.grid, keyTargets: m.keyTargets || {}, status: 'lobby', objective: '', createdAt: Date.now(), hb: Date.now() };
                 if (lobbyPw) lobbyData.pw = lobbyPw;
                 await set(ref(rtdb, 'lobbies/' + code), lobbyData);
-                await set(ref(rtdb, 'lobbies/' + code + '/players/' + myUid), { name, isHost: true, role: 'lobby', spawn: [0, 0], connected: true });
+                await set(ref(rtdb, 'lobbies/' + code + '/players/' + myUid), { name: String(name).slice(0, 16), isHost: true, role: 'lobby', spawn: [0, 0], connected: true });
                 onDisconnect(ref(rtdb, 'lobbies/' + code + '/players/' + myUid)).remove();
                 onDisconnect(ref(rtdb, 'lobbies/' + code)).remove();
                 enterLobby(code, name, true);
@@ -724,6 +819,7 @@
             $('readyBtn').textContent = 'Ready';
             $('lobbyHint').textContent = host ? 'You are the host. Draw the maze, then Start.' : 'Place your spawn, click Ready, then wait for the host to Start.';
             if (host) {
+                buildMpAiConfigs();
                 let link = location.origin + location.pathname + '?lobby=' + code;
                 if (lobbyPw) link += '&pw=' + encodeURIComponent(lobbyPw);
                 $('lobbyLink').value = link; $('linkRow').style.display = '';
@@ -741,7 +837,7 @@
                     const sig = d.gridSize + '|' + d.grid.join(',') + '|' + JSON.stringify(d.keyTargets || {});
                     if (sig !== lastMazeSig) { lastMazeSig = sig; window.G.setMaze(d.gridSize, d.grid, d.keyTargets || {}); }
                 }
-                if (d.ai) window.G.setAI(d.ai.x, d.ai.y); else window.G.clearAI();
+                if (d.ai) { window.G.clearAI(); for (const i in d.ai) { const a = d.ai[i]; if (a && typeof a.x === 'number' && typeof a.y === 'number') window.G.setAI(i, a.x, a.y, a.name, a.method); } } else window.G.clearAI();
                 window.G.setKeyDoorState(d.keysTaken, d.doorsOpen);
                 $('objectiveText').textContent = d.objective || '';
                 if (d.status === 'playing' && !started) {
@@ -751,7 +847,7 @@
                     startPlay((isHost || (my && my.ready)) ? 'player' : 'spectator');
                 } else if (d.status === 'lobby' && started) {
                     started = false; playing = false; myRole = 'lobby';
-                    aiRunning = false; aiAgent = null;
+                    aiRunning = false; window.G.setMPAgents({});
                     window.G.clearAI(); window.G.setLobbyPhase('lobby'); window.G.setRole('lobby'); window.G.setSpawnMode(false); window.G.resetLocal();
                     myReady = false; $('readyBtn').textContent = 'Ready';
                     set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/role'), 'lobby').catch(() => {});
@@ -804,23 +900,23 @@
         function leaveLobby(kicked) {
             if (lobbyCode && myUid) remove(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid)).catch(() => {});
             if (isHost && lobbyCode) remove(ref(rtdb, 'lobbies/' + lobbyCode)).catch(() => {});
-            lobbyCode = ''; isHost = false; aiRunning = false; aiAgent = null; started = false; myReady = false; playing = false; myRole = 'lobby'; lobbyPw = '';
+            lobbyCode = ''; isHost = false; aiRunning = false; window.G.setMPAgents({}); started = false; myReady = false; playing = false; myRole = 'lobby'; lobbyPw = '';
             window.G.clearRemote(); window.G.clearAI(); window.G.setGameMode(null); window.G.setLobbyPhase(null);
             hide('lobbyScreen'); show('mpSetup'); $('chatBox').innerHTML = '';
             if (kicked) status($('mpStatus'), 'The lobby closed', true);
         }
 
         window.NET = {
-            setSpawn(pos) { if (!lobbyCode) return; set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/spawn'), pos).catch(() => {}); window.G.setRemoteSpawn(myUid, pos); window.G.setMySpawn(pos); },
-            takeKey(x, y) { if (!lobbyCode) return; set(ref(rtdb, 'lobbies/' + lobbyCode + '/keysTaken/' + x + ',' + y), true).catch(() => {}); },
-            openDoor(x, y) { if (!lobbyCode) return; set(ref(rtdb, 'lobbies/' + lobbyCode + '/doorsOpen/' + x + ',' + y), true).catch(() => {}); },
-            pushMaze() { if ((!isHost && !window.G.getCanEdit()) || !lobbyCode) return; const m = window.G.getMaze(); set(ref(rtdb, 'lobbies/' + lobbyCode + '/grid'), m.grid).catch(() => {}); set(ref(rtdb, 'lobbies/' + lobbyCode + '/gridSize'), m.size).catch(() => {}); set(ref(rtdb, 'lobbies/' + lobbyCode + '/keyTargets'), m.keyTargets).catch(() => {}); },
-            updatePos(pos) { if (!lobbyCode) return; set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/pos'), pos).catch(() => {}); },
-            chat(text) { if (!lobbyCode || !text) return; push(ref(rtdb, 'lobbies/' + lobbyCode + '/chat'), { name: myName, text, ts: Date.now() }).catch(() => {}); },
+            setSpawn(pos) { if (!lobbyCode || !rtdb) return; if (!validPos(pos)) return; set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/spawn'), pos).catch(() => {}); window.G.setRemoteSpawn(myUid, pos); window.G.setMySpawn(pos); },
+            takeKey(x, y) { if (!lobbyCode || !rtdb) return; x = clampGrid(x); y = clampGrid(y); set(ref(rtdb, 'lobbies/' + lobbyCode + '/keysTaken/' + x + ',' + y), true).catch(() => {}); },
+            openDoor(x, y) { if (!lobbyCode || !rtdb) return; x = clampGrid(x); y = clampGrid(y); set(ref(rtdb, 'lobbies/' + lobbyCode + '/doorsOpen/' + x + ',' + y), true).catch(() => {}); },
+            pushMaze() { pushMazeThrottled(); },
+            updatePos(pos) { if (!lobbyCode) return; updatePosThrottled(pos); },
+            chat(text) { if (!lobbyCode || !rtdb || !text) return; const t = String(text).slice(0, 256); if (!t.trim()) return; push(ref(rtdb, 'lobbies/' + lobbyCode + '/chat'), { name: myName, text: t, ts: Date.now() }).catch(() => {}); },
             stop() {
                 if (!lobbyCode) return;
                 if (isHost) {
-                    aiRunning = false; aiAgent = null;
+                    aiRunning = false; window.G.setMPAgents({});
                     set(ref(rtdb, 'lobbies/' + lobbyCode + '/status'), 'lobby').catch(() => {});
                     remove(ref(rtdb, 'lobbies/' + lobbyCode + '/ai')).catch(() => {});
                     remove(ref(rtdb, 'lobbies/' + lobbyCode + '/keysTaken')).catch(() => {});
@@ -844,23 +940,37 @@
             window.G.setMyPos(spawn.slice()); window.G.setMySpawn(spawn.slice());
             window.G.resetLocal();
             if (role === 'player') window.NET.updatePos(spawn);
-            if (isHost && role === 'player' && aiEnabled) { aiAgent = { pos: (findSpawn() || [0, 0]).slice(), unlocked: new Set() }; aiRunning = true; }
-            else { aiRunning = false; if (isHost && lobbyCode) remove(ref(rtdb, 'lobbies/' + lobbyCode + '/ai')).catch(() => {}); }
+            if (isHost && role === 'player' && aiCount > 0) {
+                const agents = {};
+                const sp = findSpawn() || [0, 0];
+                for (let i = 0; i < aiCount; i++) {
+                    agents[i] = { name: (getHostAIName(i) || ('AI ' + (i + 1))).slice(0, 16), method: getHostAIMethod(i), pos: sp.slice(), unlocked: new Set(), Q: makeQTable() };
+                }
+                window.G.setMPAgents(agents); aiRunning = true;
+            } else {
+                aiRunning = false; window.G.setMPAgents({});
+                if (isHost && lobbyCode) remove(ref(rtdb, 'lobbies/' + lobbyCode + '/ai')).catch(() => {});
+            }
             updateControls();
         }
         function findSpawn() { const m = window.G.getMaze(); for (let i = 0; i < m.grid.length; i++) if (m.grid[i] === 4) return [i % m.size, Math.floor(i / m.size)]; return null; }
 
-        // host runs the single multiplayer AI, syncing its position
+        // host runs up to 3 multiplayer AIs, syncing positions (indexed array shape)
         setInterval(() => {
-            if (isHost && aiRunning && aiAgent && lobbyCode) {
-                const pos = window.G.moveMPAI(aiAgent);
-                set(ref(rtdb, 'lobbies/' + lobbyCode + '/ai'), { x: pos[0], y: pos[1] }).catch(() => {});
+            if (!(isHost && aiRunning && lobbyCode && rtdb)) return;
+            const agents = window.G.getMPAgents();
+            if (!agents || Object.keys(agents).length === 0) return;
+            for (const i in agents) {
+                const agent = agents[i];
+                if (!agent || !agent.pos) continue;
+                const pos = window.G.moveMPAI(agent);
+                set(ref(rtdb, 'lobbies/' + lobbyCode + '/ai/' + i), { x: pos[0], y: pos[1], name: agent.name || ('AI ' + (+i + 1)), method: agent.method || 'qlearning' }).catch(() => {});
             }
         }, 250);
 
         // host heartbeat so dead lobbies can be detected + filtered
         setInterval(() => {
-            if (isHost && lobbyCode) set(ref(rtdb, 'lobbies/' + lobbyCode + '/hb'), Date.now()).catch(() => {});
+            if (isHost && lobbyCode && rtdb) set(ref(rtdb, 'lobbies/' + lobbyCode + '/hb'), Date.now()).catch(() => {});
         }, 5000);
 
         function wire() {
@@ -868,51 +978,54 @@
             $('mpBtn').onclick = () => { hide('modeScreen'); show('mpSetup'); window.G.setGameMode(null); };
             $('backBtn').onclick = () => { hide('mpSetup'); show('modeScreen'); window.G.setGameMode(null); };
 
-            $('hostBtn').onclick = async () => { const n = $('mpName').value.trim(); if (!n) { status($('mpStatus'), 'Enter a name', true); return; } myName = n; await hostLobby(n); };
-            $('joinBtn').onclick = async () => { const n = $('mpName').value.trim(), c = $('joinCode').value.trim().toUpperCase(); if (!n) { status($('mpStatus'), 'Enter a name', true); return; } if (!c) { status($('mpStatus'), 'Enter a lobby code', true); return; } myName = n; await joinLobby(c, n); };
+            if (rtdb) {
+                $('hostBtn').onclick = async () => { const n = $('mpName').value.trim(); if (!n) { status($('mpStatus'), 'Enter a name', true); return; } myName = n; await hostLobby(n); };
+                $('joinBtn').onclick = async () => { const n = $('mpName').value.trim(), c = $('joinCode').value.trim().toUpperCase(); if (!n) { status($('mpStatus'), 'Enter a name', true); return; } if (!c) { status($('mpStatus'), 'Enter a lobby code', true); return; } myName = n; await joinLobby(c, n); };
 
-            onValue(ref(rtdb, 'lobbies'), (snap) => {
-                const list = $('lobbyList'); list.innerHTML = '';
-                const d = snap.val() || {}; let any = false;
-                for (const code in d) {
-                    const l = d[code]; if (l.status !== 'lobby') continue;
-                    if (!l.hb || Date.now() - l.hb > 15000) continue;
-                    if (l.hostUid && l.players && !l.players[l.hostUid]) continue;
-                    const cnt = l.players ? Object.keys(l.players).length : 0; if (cnt >= 4) continue;
-                    any = true;
-                    const item = document.createElement('div'); item.className = 'lobby-item';
-                    item.textContent = code + ' - ' + l.hostName + (l.pw ? ' [private]' : '') + ' (' + cnt + '/4)';
-                    item.onclick = () => { $('joinCode').value = code; if (l.pw) $('joinPw').focus(); };
-                    list.appendChild(item);
-                }
-                if (!any) list.innerHTML = '<div style="color:#b8a8cc">No open lobbies</div>';
-            });
+                onValue(ref(rtdb, 'lobbies'), (snap) => {
+                    const list = $('lobbyList'); list.innerHTML = '';
+                    const d = snap.val() || {}; let any = false;
+                    for (const code in d) {
+                        const l = d[code]; if (l.status !== 'lobby') continue;
+                        if (!l.hb || Date.now() - l.hb > 15000) continue;
+                        if (l.hostUid && l.players && !l.players[l.hostUid]) continue;
+                        const cnt = l.players ? Object.keys(l.players).length : 0; if (cnt >= 4) continue;
+                        any = true;
+                        const item = document.createElement('div'); item.className = 'lobby-item';
+                        item.textContent = code + ' - ' + l.hostName + (l.pw ? ' [private]' : '') + ' (' + cnt + '/4)';
+                        item.onclick = () => { $('joinCode').value = code; if (l.pw) $('joinPw').focus(); };
+                        list.appendChild(item);
+                    }
+                    if (!any) list.innerHTML = '<div style="color:#b8a8cc">No open lobbies</div>';
+                });
 
-            const sendChat = () => { const t = $('chatInput').value.trim(); if (!t) return; window.NET.chat(t); $('chatInput').value = ''; };
-            $('chatSend').onclick = sendChat;
-            $('chatInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });
+                const sendChat = () => { const t = $('chatInput').value.trim(); if (!t) return; window.NET.chat(t); $('chatInput').value = ''; };
+                $('chatSend').onclick = sendChat;
+                $('chatInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });
 
-            $('setSpawnBtn').onclick = () => {
-                spawnMode = !spawnMode; window.G.setSpawnMode(spawnMode);
-                $('lobbyHint').textContent = spawnMode ? 'Click a cell to set your spawn' : (isHost ? 'You are the host. Click the grid to draw the maze.' : 'Click "Place my spawn", then click a cell.');
-            };
-            $('readyBtn').onclick = () => {
-                myReady = !myReady;
-                set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/ready'), myReady).catch(() => {});
-                if (myReady) set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/role'), 'lobby').catch(() => {});
-                $('readyBtn').textContent = myReady ? 'Ready ✓' : 'Ready';
-            };
-            $('startBtn').onclick = () => { update(ref(rtdb, 'lobbies/' + lobbyCode), { status: 'playing', startTs: Date.now() }).catch(() => {}); };
-            $('spectateBtn').onclick = () => {
-                myReady = false; $('readyBtn').textContent = 'Ready';
-                set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/ready'), false).catch(() => {});
-                set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/role'), 'spectator').catch(() => {});
-            };
-            $('aiToggle').onchange = (e) => { aiEnabled = e.target.checked; };
-            $('objectiveInput').onchange = (e) => { set(ref(rtdb, 'lobbies/' + lobbyCode + '/objective'), e.target.value).catch(() => {}); };
-            $('copyLinkBtn').onclick = () => { const v = $('lobbyLink').value; if (navigator.clipboard) navigator.clipboard.writeText(v).catch(() => {}); else { $('lobbyLink').select(); document.execCommand('copy'); } };
-            $('stopBtn').onclick = () => window.NET.stop();
-            $('leaveLobbyBtn').onclick = () => leaveLobby(false);
+                $('setSpawnBtn').onclick = () => {
+                    spawnMode = !spawnMode; window.G.setSpawnMode(spawnMode);
+                    $('lobbyHint').textContent = spawnMode ? 'Click a cell to set your spawn' : (isHost ? 'You are the host. Click the grid to draw the maze.' : 'Click "Place my spawn", then click a cell.');
+                };
+                $('readyBtn').onclick = () => {
+                    myReady = !myReady;
+                    set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/ready'), myReady).catch(() => {});
+                    if (myReady) set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/role'), 'lobby').catch(() => {});
+                    $('readyBtn').textContent = myReady ? 'Ready ✓' : 'Ready';
+                };
+                $('startBtn').onclick = () => { update(ref(rtdb, 'lobbies/' + lobbyCode), { status: 'playing', startTs: Date.now() }).catch(() => {}); };
+                $('spectateBtn').onclick = () => {
+                    myReady = false; $('readyBtn').textContent = 'Ready';
+                    set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/ready'), false).catch(() => {});
+                    set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/role'), 'spectator').catch(() => {});
+                };
+                $('mpAiCount').onchange = () => { aiCount = parseInt($('mpAiCount').value, 10) || 1; buildMpAiConfigs(); };
+                buildMpAiConfigs();
+                $('objectiveInput').onchange = (e) => { set(ref(rtdb, 'lobbies/' + lobbyCode + '/objective'), e.target.value).catch(() => {}); };
+                $('copyLinkBtn').onclick = () => { const v = $('lobbyLink').value; if (navigator.clipboard) navigator.clipboard.writeText(v).catch(() => {}); else { $('lobbyLink').select(); document.execCommand('copy'); } };
+                $('stopBtn').onclick = () => window.NET.stop();
+                $('leaveLobbyBtn').onclick = () => leaveLobby(false);
+            }
 
             $('saveBtn').onclick = () => saveGrid($('mazeName').value.trim() || 'maze1');
             $('loadBtn').onclick = () => loadGrid($('mazeName').value.trim() || 'maze1');
