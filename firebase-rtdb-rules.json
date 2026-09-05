@@ -1,55 +1,112 @@
 {
   "rules": {
     "lobbies": {
+      ".read": true,
       "$code": {
         ".read": true,
-        ".write": "root.child('lobbies').child($code).child('hostUid').val() === auth.uid || !data.exists()",
-        "hostName": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 16" },
-        "hostUid": { ".validate": "newData.isString()" },
-        "gridSize": { ".validate": "newData.isNumber() && newData.val() >= 3 && newData.val() <= 150" },
-        "grid": { ".validate": "newData.isArray()" },
-        "keyTargets": { ".validate": "newData.isObject()" },
-        "objective": { ".validate": "newData.isString() && newData.val().length <= 200" },
-        "status": { ".validate": "newData.isString() && (newData.val() === 'lobby' || newData.val() === 'playing')" },
-        "pw": { ".validate": "newData.isString() && newData.val().length <= 20" },
-        "createdAt": { ".validate": "newData.isNumber()" },
-        "startTs": { ".validate": "newData.isNumber()" },
-        "hb": { ".validate": "newData.isNumber()" },
+        ".write": true,
+        "hostName": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 16"
+        },
+        "hostUid": {
+          ".validate": "newData.isString() && newData.val().length <= 100"
+        },
+        "gridSize": {
+          ".validate": "newData.isNumber() && newData.val() >= 3 && newData.val() <= 150"
+        },
+        "grid": {
+          ".validate": "newData.isArray()"
+        },
+        "keyTargets": {
+          ".validate": "newData.isObject()"
+        },
+        "objective": {
+          ".validate": "newData.isString() && newData.val().length <= 200"
+        },
+        "status": {
+          ".validate": "newData.isString() && (newData.val() === 'lobby' || newData.val() === 'playing')"
+        },
+        "pw": {
+          ".validate": "newData.isString() && newData.val().length <= 20"
+        },
+        "createdAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "startTs": {
+          ".validate": "newData.isNumber()"
+        },
+        "hb": {
+          ".validate": "newData.isNumber()"
+        },
         "keysTaken": {
-          "$key": { ".validate": "newData.isBoolean()" }
+          "$key": {
+            ".validate": "newData.isBoolean()"
+          }
         },
         "doorsOpen": {
-          "$key": { ".validate": "newData.isBoolean()" }
+          "$key": {
+            ".validate": "newData.isBoolean()"
+          }
         },
         "ai": {
           "$index": {
-            "x": { ".validate": "newData.isNumber()" },
-            "y": { ".validate": "newData.isNumber()" },
-            "name": { ".validate": "newData.isString() && newData.val().length <= 16" },
-            "method": { ".validate": "newData.isString() && newData.val().length <= 24" }
+            "x": {
+              ".validate": "newData.isNumber()"
+            },
+            "y": {
+              ".validate": "newData.isNumber()"
+            },
+            "name": {
+              ".validate": "newData.isString() && newData.val().length <= 16"
+            },
+            "method": {
+              ".validate": "newData.isString() && newData.val().length <= 24"
+            }
           }
         },
         "players": {
           "$uid": {
             ".read": true,
-            ".write": "$uid === auth.uid",
+            ".write": true,
             ".validate": "newData.hasChildren(['name'])",
-            "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 16" },
-            "isHost": { ".validate": "newData.isBoolean()" },
-            "role": { ".validate": "newData.isString() && (newData.val() === 'lobby' || newData.val() === 'player' || newData.val() === 'spectator')" },
-            "spawn": { ".validate": "newData.isArray() && newData.val().length === 2" },
-            "pos": { ".validate": "newData.isArray() && newData.val().length === 2" },
-            "ready": { ".validate": "newData.isBoolean()" },
-            "canEdit": { ".validate": "newData.isBoolean()" },
-            "connected": { ".validate": "newData.isBoolean()" }
+            "name": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 16"
+            },
+            "isHost": {
+              ".validate": "newData.isBoolean()"
+            },
+            "role": {
+              ".validate": "newData.isString() && (newData.val() === 'lobby' || newData.val() === 'player' || newData.val() === 'spectator')"
+            },
+            "spawn": {
+              ".validate": "newData.isArray() && newData.val().length === 2"
+            },
+            "pos": {
+              ".validate": "newData.isArray() && newData.val().length === 2"
+            },
+            "ready": {
+              ".validate": "newData.isBoolean()"
+            },
+            "canEdit": {
+              ".validate": "newData.isBoolean()"
+            },
+            "connected": {
+              ".validate": "newData.isBoolean()"
+            }
           }
         },
         "chat": {
           "$msgId": {
             ".validate": "newData.hasChildren(['name', 'text', 'ts'])",
-            "name": { ".validate": "newData.isString() && newData.val().length <= 16" },
-            "text": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 256" },
-            "ts": { ".validate": "newData.isNumber()" }
+            "name": {
+              ".validate": "newData.isString() && newData.val().length <= 16"
+            },
+            "text": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 256"
+            },
+            "ts": {
+              ".validate": "newData.isNumber()"
+            }
           }
         }
       }
