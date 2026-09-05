@@ -6,61 +6,61 @@
         ".read": true,
         ".write": true,
         "hostName": {
-          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 16"
+          ".validate": "(newData.isString() && newData.val().length > 0 && newData.val().length <= 16) || !newData.exists()"
         },
         "hostUid": {
-          ".validate": "newData.isString() && newData.val().length <= 100"
+          ".validate": "(newData.isString() && newData.val().length <= 100) || !newData.exists()"
         },
         "gridSize": {
-          ".validate": "newData.isNumber() && newData.val() >= 3 && newData.val() <= 150"
+          ".validate": "(newData.isNumber() && newData.val() >= 3 && newData.val() <= 150) || !newData.exists()"
         },
         "grid": {
-          ".validate": "newData.isObject()"
+          ".validate": "(newData.hasChildren(['0']) && newData.child('0').isNumber()) || !newData.exists()"
         },
         "keyTargets": {
-          ".validate": "newData.isObject()"
+          ".validate": "(newData.hasChildren()) || !newData.exists()"
         },
         "objective": {
-          ".validate": "newData.isString() && newData.val().length <= 200"
+          ".validate": "(newData.isString() && newData.val().length <= 200) || !newData.exists()"
         },
         "status": {
-          ".validate": "newData.isString() && (newData.val() === 'lobby' || newData.val() === 'playing')"
+          ".validate": "(newData.isString() && (newData.val() === 'lobby' || newData.val() === 'playing')) || !newData.exists()"
         },
         "pw": {
-          ".validate": "newData.isString() && newData.val().length <= 20"
+          ".validate": "(newData.isString() && newData.val().length <= 20) || !newData.exists()"
         },
         "createdAt": {
-          ".validate": "newData.isNumber()"
+          ".validate": "(newData.isNumber()) || !newData.exists()"
         },
         "startTs": {
-          ".validate": "newData.isNumber()"
+          ".validate": "(newData.isNumber()) || !newData.exists()"
         },
         "hb": {
-          ".validate": "newData.isNumber()"
+          ".validate": "(newData.isNumber()) || !newData.exists()"
         },
         "keysTaken": {
           "$key": {
-            ".validate": "newData.isBoolean()"
+            ".validate": "newData.isBoolean() || !newData.exists()"
           }
         },
         "doorsOpen": {
           "$key": {
-            ".validate": "newData.isBoolean()"
+            ".validate": "newData.isBoolean() || !newData.exists()"
           }
         },
         "ai": {
           "$index": {
             "x": {
-              ".validate": "newData.isNumber()"
+              ".validate": "(newData.isNumber()) || !newData.exists()"
             },
             "y": {
-              ".validate": "newData.isNumber()"
+              ".validate": "(newData.isNumber()) || !newData.exists()"
             },
             "name": {
-              ".validate": "newData.isString() && newData.val().length <= 16"
+              ".validate": "(newData.isString() && newData.val().length <= 16) || !newData.exists()"
             },
             "method": {
-              ".validate": "newData.isString() && newData.val().length <= 24"
+              ".validate": "(newData.isString() && newData.val().length <= 24) || !newData.exists()"
             }
           }
         },
@@ -68,44 +68,44 @@
           "$uid": {
             ".read": true,
             ".write": true,
-            ".validate": "newData.hasChildren(['name'])",
+            ".validate": "newData.hasChildren(['name']) || !newData.exists()",
             "name": {
-              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 16"
+              ".validate": "(newData.isString() && newData.val().length > 0 && newData.val().length <= 16) || !newData.exists()"
             },
             "isHost": {
-              ".validate": "newData.isBoolean()"
+              ".validate": "(newData.isBoolean()) || !newData.exists()"
             },
             "role": {
-              ".validate": "newData.isString() && (newData.val() === 'lobby' || newData.val() === 'player' || newData.val() === 'spectator')"
+              ".validate": "(newData.isString() && (newData.val() === 'lobby' || newData.val() === 'player' || newData.val() === 'spectator')) || !newData.exists()"
             },
             "spawn": {
-              ".validate": "newData.isObject() && newData.numChildren() === 2 && newData.child('0').isNumber() && newData.child('1').isNumber()"
+              ".validate": "(newData.hasChildren(['0', '1']) && newData.child('0').isNumber() && newData.child('1').isNumber()) || !newData.exists()"
             },
             "pos": {
-              ".validate": "newData.isObject() && newData.numChildren() === 2 && newData.child('0').isNumber() && newData.child('1').isNumber()"
+              ".validate": "(newData.hasChildren(['0', '1']) && newData.child('0').isNumber() && newData.child('1').isNumber()) || !newData.exists()"
             },
             "ready": {
-              ".validate": "newData.isBoolean()"
+              ".validate": "(newData.isBoolean()) || !newData.exists()"
             },
             "canEdit": {
-              ".validate": "newData.isBoolean()"
+              ".validate": "(newData.isBoolean()) || !newData.exists()"
             },
             "connected": {
-              ".validate": "newData.isBoolean()"
+              ".validate": "(newData.isBoolean()) || !newData.exists()"
             }
           }
         },
         "chat": {
           "$msgId": {
-            ".validate": "newData.hasChildren(['name', 'text', 'ts'])",
+            ".validate": "newData.hasChildren(['name', 'text', 'ts']) || !newData.exists()",
             "name": {
-              ".validate": "newData.isString() && newData.val().length <= 16"
+              ".validate": "(newData.isString() && newData.val().length <= 16) || !newData.exists()"
             },
             "text": {
-              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 256"
+              ".validate": "(newData.isString() && newData.val().length > 0 && newData.val().length <= 256) || !newData.exists()"
             },
             "ts": {
-              ".validate": "newData.isNumber()"
+              ".validate": "(newData.isNumber()) || !newData.exists()"
             }
           }
         }
