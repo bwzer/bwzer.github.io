@@ -56,6 +56,10 @@
         .fb-status.err { color: #ff5f52; }
         .objective { font-size: 1.15rem; color: #ffd54a; margin: 4px 0; min-height: 1.2em; }
         .modal { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 30; background: #241b33; border: 1px solid #3a2b50; border-radius: 12px; padding: 22px 24px; max-width: 420px; width: 92%; text-align: center; box-shadow: 0 12px 40px rgba(0,0,0,.55); }
+        #dpad { position: fixed; bottom: 18px; left: 14px; z-index: 20; display: none; grid-template-columns: repeat(3, 62px); grid-auto-rows: 62px; gap: 6px; touch-action: none; }
+        .dbtn { background: rgba(110, 40, 217, .85); color: #fff; border: 2px solid #e8e0f0; border-radius: 10px; font-size: 22px; display: flex; align-items: center; justify-content: center; user-select: none; -webkit-user-select: none; touch-action: none; }
+        .dbtn:active { background: #4a1568; }
+        @media (pointer: coarse) { #dpad { display: grid; } }
         .ai-cfg { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 6px 0; border: 1px solid #3a2b50; border-radius: 6px; padding: 6px 8px; background: #1e1630; }
         .ai-cfg .lbl { color: #b8a8cc; font-size: 0.85rem; min-width: 30px; }
         .ai-cfg input { flex: 1 1 90px; min-width: 0; background: #2e2140; border: 1px solid #4a3565; border-radius: 5px; color: #e8e0f0; padding: 5px 7px; font-family: inherit; font-size: 0.88rem; }
@@ -168,6 +172,27 @@
         <div id="resultsList" style="text-align:left; margin:10px 0; max-height:60vh; overflow:auto;"></div>
         <button id="resultsBackBtn" class="btn">Back to lobby</button>
         <div id="resultsWait" class="status"></div>
+    </div>
+
+    <div id="helpModal" class="modal hidden">
+        <h2>Help</h2>
+        <div style="text-align:left; font-size:.9rem; line-height:1.6;">
+            <p><b>Move:</b> Arrow keys / WASD (or on-screen D-pad on touch devices).</p>
+            <p><b>Teleporter</b> <span style="color:#ff4dd8">■</span> warps you to its pair. <b>Ice</b> <span style="color:#c8ecff">■</span> makes you slide. <b>Boost</b> <span style="color:#ffab1f">■</span> jumps you one extra cell. <b>Slow</b> <span style="color:#7a6f9e">■</span> makes you skip your next move.</p>
+            <p><b>Solo editor:</b> click a cell to cycle tiles, right-click (long-press) to erase. Arrow keys pan, <kbd>C</kbd> or Rec enter view.</p>
+            <p><b>Simulation:</b> <kbd>2</kbd> to run AIs, <kbd>SPACE</kbd> to start, <kbd>Enter</kbd> to set time limit.</p>
+            <p><b>Spectate:</b> <kbd>,</kbd> / <kbd>.</kbd> switch who you follow.</p>
+            <p><b>Lobby:</b> draw or <b>Generate maze</b>, place your spawn, Ready, then Start (host).</p>
+        </div>
+        <button id="helpCloseBtn" class="btn">OK</button>
+    </div>
+
+    <button id="helpOpenBtn" class="btn ghost" style="position:fixed; top:12px; right:12px; z-index:25; border-radius:50%; padding:8px 13px; font-weight:700;">?</button>
+
+    <div id="dpad">
+        <div></div><button class="dbtn" data-d="0,-1" aria-label="up">▲</button><div></div>
+        <button class="dbtn" data-d="-1,0" aria-label="left">◀</button><div></div><button class="dbtn" data-d="1,0" aria-label="right">▶</button>
+        <div></div><button class="dbtn" data-d="0,1" aria-label="down">▼</button><div></div>
     </div>
 
     <div class="wrap">
@@ -301,8 +326,8 @@
             WIDTH = CELL * n; HEIGHT = CELL * n;
             canvas.width = SCREEN; canvas.height = SCREEN;
             grid = Array.from({ length: n }, () => Array(n).fill(EMPTY));
-            for (const a of ais) a.Q = makeQTable();
-            for (const a of Object.values(mpAgents)) { a.Q = makeQTable(); a.unlocked = new Set(); }
+            for (const a of ais) resetAgentTables(a);
+            for (const a of Object.values(mpAgents)) { resetAgentTables(a); a.unlocked = new Set(); }
             const mx = Math.max(0, WIDTH - SCREEN), my2 = Math.max(0, HEIGHT - SCREEN);
             camTgtX = Math.max(0, Math.min(mx, camTgtX)); camTgtY = Math.max(0, Math.min(my2, camTgtY));
             camX = camTgtX; camY = camTgtY;
@@ -314,6 +339,19 @@
         function findTile(t) {
             for (let y = 0; y < GRID; y++) for (let x = 0; x < GRID; x++) if (grid[y][x] === t) return [x, y];
             return null;
+        }
+
+        function ensureTables(agent) {
+            if (!agent.Q) agent.Q = makeQTable();
+            if (agent.method === 'doubleq') {
+                if (!agent.QA) { agent.QA = makeQTable(); agent.QB = makeQTable(); }
+            }
+            if (agent.method === 'dynaq' && !agent.model) agent.model = {};
+        }
+
+        function resetAgentTables(a) {
+            a.Q = makeQTable(); a.QA = null; a.QB = null; a.model = {};
+            if (a.method === 'doubleq') { a.QA = makeQTable(); a.QB = makeQTable(); }
         }
 
         function chooseAction(pos, agent) {
@@ -334,8 +372,16 @@
                 }
                 return bestA;
             }
+            ensureTables(agent);
             const q = agent.Q[pos[0]][pos[1]];
-            let best = 0; for (let i = 1; i < 4; i++) if (q[i] > q[best]) best = i;
+            const qa = agent.QA ? agent.QA[pos[0]][pos[1]] : null;
+            const qb = agent.QB ? agent.QB[pos[0]][pos[1]] : null;
+            let best = 0;
+            for (let i = 1; i < 4; i++) {
+                const v = (qa && qb) ? qa[i] + qb[i] : q[i];
+                const bv = (qa && qb) ? qa[best] + qb[best] : q[best];
+                if (v > bv) best = i;
+            }
             return best;
         }
 
@@ -368,9 +414,34 @@
                 if (p) { nx = p[0]; ny = p[1]; }
             }
             else if (nx === finish[0] && ny === finish[1]) { reward = 10; }
+            ensureTables(agent);
             if (agent.method === 'sarsa') {
                 const nxt = chooseAction([nx, ny], agent);
                 agent.Q[x][y][action] += alpha * (reward + gamma * agent.Q[nx][ny][nxt] - agent.Q[x][y][action]);
+            } else if (agent.method === 'doubleq') {
+                const QA = agent.QA[x][y], QB = agent.QB[x][y];
+                if (Math.random() < 0.5) {
+                    let bi = 0; const nqa = agent.QA[nx][ny]; for (let i = 1; i < 4; i++) if (nqa[i] > nqa[bi]) bi = i;
+                    QA[action] += alpha * (reward + gamma * agent.QB[nx][ny][bi] - QA[action]);
+                } else {
+                    let bi = 0; const nqb = agent.QB[nx][ny]; for (let i = 1; i < 4; i++) if (nqb[i] > nqb[bi]) bi = i;
+                    QB[action] += alpha * (reward + gamma * agent.QA[nx][ny][bi] - QB[action]);
+                }
+            } else if (agent.method === 'dynaq') {
+                agent.Q[x][y][action] += alpha * (reward + gamma * Math.max(...agent.Q[nx][ny]) - agent.Q[x][y][action]);
+                const mk = x + ',' + y;
+                if (!agent.model[mk]) agent.model[mk] = {};
+                agent.model[mk][action] = { nx: nx, ny: ny, r: reward };
+                const keys = Object.keys(agent.model);
+                for (let i = 0; i < 4 && keys.length; i++) {
+                    const sk = keys[Math.floor(Math.random() * keys.length)];
+                    const [sx2, sy2] = sk.split(',').map(Number);
+                    const as = Object.keys(agent.model[sk]);
+                    if (!as.length) continue;
+                    const a2 = +as[Math.floor(Math.random() * as.length)];
+                    const e = agent.model[sk][a2];
+                    agent.Q[sx2][sy2][a2] += alpha * (e.r + gamma * Math.max(...agent.Q[e.nx][e.ny]) - agent.Q[sx2][sy2][a2]);
+                }
             } else {
                 agent.Q[x][y][action] += alpha * (reward + gamma * Math.max(...agent.Q[nx][ny]) - agent.Q[x][y][action]);
             }
@@ -880,7 +951,7 @@
         };
 
         // ---- AI config UI builders ----
-        const AI_METHODS = [['qlearning', 'Q-Learning'], ['sarsa', 'SARSA'], ['greedy', 'Greedy']];
+        const AI_METHODS = [['qlearning', 'Q-Learning'], ['sarsa', 'SARSA'], ['doubleq', 'Double Q'], ['dynaq', 'Dyna-Q'], ['greedy', 'Greedy']];
         function aiCfgRow(sub) {
             const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             return '<div class="ai-cfg">' +
@@ -1047,6 +1118,29 @@
             if (isMp && window.NET) window.NET.pushMaze();
         }
         document.getElementById('genBtn').onclick = () => generateAndApply(false);
+        document.getElementById('helpOpenBtn').onclick = () => document.getElementById('helpModal').classList.remove('hidden');
+        document.getElementById('helpCloseBtn').onclick = () => document.getElementById('helpModal').classList.add('hidden');
+        document.querySelectorAll('.dbtn').forEach(b => {
+            const p = b.dataset.d.split(',').map(Number);
+            let iv = null;
+            const go = () => { if (gameMode === 'mp' && mpPhase === 'playing') movePlayer(p[0], p[1]); };
+            b.addEventListener('pointerdown', (e) => { e.preventDefault(); go(); if (iv) clearInterval(iv); iv = setInterval(go, 140); });
+            const stop = () => { if (iv) { clearInterval(iv); iv = null; } };
+            b.addEventListener('pointerup', stop);
+            b.addEventListener('pointerleave', stop);
+            b.addEventListener('pointercancel', stop);
+        });
+        let tSX = 0, tSY = 0, tActive = false;
+        canvas.addEventListener('touchstart', (e) => { tSX = e.changedTouches[0].clientX; tSY = e.changedTouches[0].clientY; tActive = true; }, { passive: true });
+        canvas.addEventListener('touchmove', (e) => { if (tActive) e.preventDefault(); }, { passive: false });
+        canvas.addEventListener('touchend', (e) => {
+            if (!tActive) return; tActive = false;
+            const t = e.changedTouches[0];
+            const dx = t.clientX - tSX, dy = t.clientY - tSY;
+            if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+            if (Math.abs(dx) > Math.abs(dy)) movePlayer(dx > 0 ? 1 : -1, 0);
+            else movePlayer(0, dy > 0 ? 1 : -1);
+        });
     </script>
 
     <script type="module">
