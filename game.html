@@ -136,6 +136,33 @@
         .podium-2 .rank-badge { color: #e0e0f0; }
         .podium-3 .rank-badge { color: #e59a58; }
         .race-timer-badge { background: #ffd54a; color: #1a0f00; font-weight: 800; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; margin-left: 8px; }
+
+        /* Achievements Modal & Rarity Badges */
+        .ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; max-height: 60vh; overflow-y: auto; padding: 8px 4px; }
+        .ach-card { background: #1a1423; border: 1px solid #3a2b50; border-radius: 8px; padding: 10px 12px; text-align: left; position: relative; transition: transform 0.15s, border-color 0.15s; }
+        .ach-card.unlocked { border-color: #ffd54a; background: #221832; }
+        .ach-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 4px; }
+        .ach-title { font-weight: 700; font-size: 0.95rem; color: #fff; }
+        .ach-card.unlocked .ach-title { color: #ffd54a; }
+        .ach-desc { font-size: 0.8rem; color: #b8a8cc; line-height: 1.4; }
+        .tier-badge { font-size: 0.72rem; font-weight: 800; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+        .tier-1 { background: #166534; color: #86efac; border: 1px solid #22c55e; }
+        .tier-2 { background: #1e40af; color: #93c5fd; border: 1px solid #3b82f6; }
+        .tier-3 { background: #6b21a8; color: #d8b4fe; border: 1px solid #a855f7; }
+        .tier-4 { background: #854d0e; color: #fef08a; border: 1px solid #eab308; }
+        .tier-5 { background: #991b1b; color: #fca5a5; border: 1px solid #ef4444; }
+        .tier-6 {
+            background: #000; color: #fff;
+            border: 2px solid transparent;
+            border-image: linear-gradient(45deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000) 1;
+            animation: prismatic 3s linear infinite;
+        }
+        @keyframes prismatic { 0% { filter: hue-rotate(0deg); } 100% { filter: hue-rotate(360deg); } }
+
+        /* Multiplayer Death Countdown Modal */
+        .death-overlay { position: fixed; inset: 0; background: rgba(18, 0, 0, 0.85); z-index: 50; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+        .death-box { background: #260f14; border: 2px solid #ef4444; border-radius: 12px; padding: 24px 30px; text-align: center; max-width: 380px; width: 90%; box-shadow: 0 0 30px rgba(239, 68, 68, 0.4); }
+        .death-countdown-num { font-size: 4rem; font-weight: 900; color: #ef4444; margin: 10px 0; text-shadow: 0 0 20px rgba(239, 68, 68, 0.8); }
         /* --- End Majestic additions --- */
     </style>
 </head>
@@ -150,6 +177,8 @@
             </div>
         </div>
         <div style="display:flex; align-items:center; gap:8px;">
+            <button id="openAchBtn" class="btn ghost" style="color:#ffd54a; border-color:#ffd54a;">🏆 Achievements</button>
+            <button id="openFriendsBtn" class="btn ghost" style="color:#ffd54a; border-color:#ffd54a;">👥 Friends</button>
             <button id="openGalleryBtn" class="btn" style="background: linear-gradient(180deg, #ffd54a 0%, #aa820a 100%); color:#1a0f00; font-weight:700; border:none; box-shadow:0 2px 8px rgba(255,213,74,0.3);">🏛️ Maze Gallery</button>
             <div class="pb-chip" id="topPb"><span>⚡ Best:</span> <b id="topPbVal">--</b></div>
         </div>
@@ -339,7 +368,68 @@
             <p><b>Spectate:</b> <kbd>,</kbd> / <kbd>.</kbd> switch who you follow.</p>
             <p><b>Lobby:</b> draw or <b>Generate maze</b>, place your spawn, Ready, then Start (host).</p>
         </div>
-        <button id="helpCloseBtn" class="btn">OK</button>
+    <!-- Friends Modal -->
+    <div id="friendsModal" class="modal hidden" style="max-width:480px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #3a2b50; padding-bottom:8px;">
+            <h2 style="margin:0; color:#ffd54a;">👥 Friends &amp; Rivals</h2>
+            <button id="closeFriendsBtn" class="btn ghost" style="padding:4px 10px;">✕</button>
+        </div>
+        <div style="margin:12px 0 8px; text-align:left; background:#1e1630; padding:10px 12px; border-radius:8px; border:1px solid #3a2b50;">
+            <div style="font-size:0.8rem; color:#b8a8cc;">Your Friend Code:</div>
+            <div style="display:flex; gap:6px; align-items:center; margin-top:4px;">
+                <input id="myFriendCodeInput" class="field" readonly style="flex:1; font-weight:700; color:#ffd54a;">
+                <button id="copyFriendCodeBtn" class="btn ghost" style="padding:6px 12px;">Copy</button>
+            </div>
+        </div>
+        <div style="text-align:left; margin-top:12px;">
+            <div style="font-size:0.85rem; color:#b8a8cc; margin-bottom:4px;">Add a Friend by Name or Code:</div>
+            <div style="display:flex; gap:6px;">
+                <input id="addFriendInput" class="field" placeholder="Gamer Tag or Code" maxlength="20" style="flex:1;">
+                <button id="addFriendBtn" class="btn" style="background:#ffd54a; color:#1a0f00; font-weight:700;">+ Add</button>
+            </div>
+            <div id="friendStatus" class="status" style="font-size:0.82rem;"></div>
+        </div>
+        <div style="text-align:left; margin-top:14px;">
+            <div style="font-size:0.85rem; color:#b8a8cc; margin-bottom:6px;">Your Friends:</div>
+            <div id="friendsList" style="max-height:220px; overflow-y:auto; border:1px solid #3a2b50; border-radius:8px; padding:6px; background:#1a1423;">
+                <div style="color:#b8a8cc; font-size:0.85rem; padding:16px; text-align:center;">No friends added yet. Add players by their Gamer Tag!</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 100 Achievements Catalog Modal -->
+    <div id="achievementsModal" class="modal modal-large hidden">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #3a2b50; padding-bottom:8px;">
+            <h2 style="margin:0; color:#ffd54a;">🏆 100 Achievements Catalog</h2>
+            <button id="closeAchBtn" class="btn ghost" style="padding:4px 10px;">✕ Close</button>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin:10px 0 6px;">
+            <div id="achStatsCount" style="color:#ffd54a; font-weight:700; font-size:0.9rem;">Unlocked: 0 / 100</div>
+            <div style="display:flex; gap:6px;">
+                <select id="achTierFilter" class="field" style="font-size:0.8rem; padding:4px 8px;">
+                    <option value="all">All Tiers (100)</option>
+                    <option value="1">1★ Casual (20)</option>
+                    <option value="2">2★ Intermediate (20)</option>
+                    <option value="3">3★ Hard (20)</option>
+                    <option value="4">4★ Extreme (20)</option>
+                    <option value="5">5★ Nightmare (15)</option>
+                    <option value="6">☠️ Pure Impossible (5)</option>
+                </select>
+            </div>
+        </div>
+        <div id="achGrid" class="ach-grid"></div>
+    </div>
+
+    <!-- Multiplayer Death Countdown Modal -->
+    <div id="deathModal" class="death-overlay hidden">
+        <div class="death-box">
+            <h2 style="color:#ef4444; margin:0 0 6px;">💀 ELIMINATED!</h2>
+            <p style="color:#b8a8cc; font-size:0.85rem; margin:0;">You were eliminated by a Hazard or Chaser!</p>
+            <div class="death-countdown-num" id="deathCountNum">5</div>
+            <p style="color:#b8a8cc; font-size:0.82rem; margin:0 0 16px;">Respawning back at spawn...</p>
+            <button id="deathExitBtn" class="btn ghost" style="border-color:#ef4444; color:#fca5a5;">Exit to Spectator</button>
+        </div>
+    </div>
     </div>
 
     <button id="helpOpenBtn" class="btn ghost" style="position:fixed; top:12px; right:12px; z-index:25; border-radius:50%; padding:8px 13px; font-weight:700;">?</button>
@@ -427,11 +517,15 @@
         const FPS = 10;
         const MIN_GRID = 3, MAX_GRID = 150;
         const FOG_RADIUS = 4;
-        const EMPTY = 0, WALL = 1, OBSTACLE = 2, FINISH = 3, SPAWN = 4, DOOR = 5, LOCKED = 6, KEY = 7, HAZARD = 8, TELEPORTER = 9, ICE = 10, BOOST = 11, SLOW = 12;
-        const MAX_TILE = SLOW;
-        const TILE_COLORS = ['#ffffff', '#969696', '#ff0000', '#00ff00', '#009696', '#8b4513', '#e65a00', '#ffc800', '#00e5ff', '#ff4dd8', '#c8ecff', '#ffab1f', '#7a6f9e'];
+        const EMPTY = 0, WALL = 1, OBSTACLE = 2, FINISH = 3, SPAWN = 4, DOOR = 5, LOCKED = 6, KEY = 7, HAZARD = 8, TELEPORTER = 9, ICE = 10, BOOST = 11, SLOW = 12, TORCH = 13, CHASER = 14;
+        const MAX_TILE = CHASER;
+        const TILE_COLORS = ['#ffffff', '#969696', '#ff0000', '#00ff00', '#009696', '#8b4513', '#e65a00', '#ffc800', '#00e5ff', '#ff4dd8', '#c8ecff', '#ffab1f', '#7a6f9e', '#ff8800', '#dc2626'];
         const BLACK = '#000000', PURPLE = '#960096';
         const PLAYER_COLORS = ['#ff5f52', '#4aa3ff', '#ffd54a', '#66e066', '#ff9f4a', '#c58fff'];
+        let hasTorch = false;
+        let isEliminated = false;
+        let deathCountdownInterval = null;
+        let deathCountdownSeconds = 5;
 
         const canvas = document.getElementById('game');
         const ctx = canvas.getContext('2d');
@@ -700,22 +794,31 @@
             return true;
         }
 
+        function isAnyTeammateNearWithTorch(x, y) {
+            // Check remote players with torches
+            for (const uid in remotePlayers) {
+                const p = remotePlayers[uid];
+                if (!p || !p.hasTorch || typeof p.x !== 'number') continue;
+                const dx = x - p.x, dy = y - p.y;
+                if (dx * dx + dy * dy <= (FOG_RADIUS + 4) * (FOG_RADIUS + 4) && hasLineOfSight(p.x, p.y, x, y)) return true;
+            }
+            return false;
+        }
+
         function visible(x, y) {
+            const rad = hasTorch ? FOG_RADIUS + 5 : FOG_RADIUS;
             const dx = x - myPos[0], dy = y - myPos[1];
-            if (dx * dx + dy * dy > FOG_RADIUS * FOG_RADIUS) return false;
-            return hasLineOfSight(myPos[0], myPos[1], x, y);
+            if (dx * dx + dy * dy <= rad * rad && hasLineOfSight(myPos[0], myPos[1], x, y)) return true;
+            return isAnyTeammateNearWithTorch(x, y);
         }
 
         function drawFog(px, py) {
             ctx.fillStyle = 'rgba(10,10,22,0.88)'; ctx.fillRect(0, 0, SCREEN, SCREEN);
-            const R = FOG_RADIUS;
-            for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
-                if (dx * dx + dy * dy > R * R) continue;
-                const x = px + dx, y = py + dy;
-                if (x < 0 || y < 0 || x >= GRID || y >= GRID) continue;
+            const x0 = Math.max(0, Math.floor(camX / CELL)), y0 = Math.max(0, Math.floor(camY / CELL));
+            const x1 = Math.min(GRID - 1, Math.ceil((camX + SCREEN) / CELL)), y1 = Math.min(GRID - 1, Math.ceil((camY + SCREEN) / CELL));
+            for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
                 if (!visible(x, y)) continue;
                 const sx = x * CELL - camX, sy = y * CELL - camY;
-                if (sx + CELL < 0 || sy + CELL < 0 || sx > SCREEN || sy > SCREEN) continue;
                 ctx.fillStyle = TILE_COLORS[effTile(x, y)];
                 ctx.fillRect(sx, sy, CELL, CELL);
                 ctx.strokeStyle = BLACK; ctx.strokeRect(sx, sy, CELL, CELL);
@@ -725,7 +828,6 @@
         function inFog(x, y) {
             return visible(x, y);
         }
-
         const avatarImgCache = {};
         function getAvatarImg(src) {
             if (!src || !src.startsWith('data:image/')) return null;
@@ -866,9 +968,87 @@
             }
         }
 
+        let lastChaserTick = 0;
+        function updateChasingAIs() {
+            // Chasers only update every 400ms for natural pacing
+            const now = Date.now();
+            if (now - lastChaserTick < 400) return;
+            lastChaserTick = now;
+
+            // Only run during active gameplay
+            const isActive = (gameMode === 'solo' && mode === 'simulation' && !simWaiting) || (gameMode === 'mp' && mpPhase === 'playing');
+            if (!isActive) return;
+
+            // Gather all chaser positions on the grid
+            const chasers = [];
+            for (let y = 0; y < GRID; y++) {
+                for (let x = 0; x < GRID; x++) {
+                    if (grid[y][x] === CHASER) chasers.push([x, y]);
+                }
+            }
+            if (!chasers.length) return;
+
+            // Find all potential victim positions (local player, remote players, or solo simulation AIs)
+            const targets = [];
+            if (gameMode === 'solo') {
+                ais.forEach(a => { if (a && a.pos) targets.push(a.pos); });
+            } else {
+                if (mpRole === 'player' && !isEliminated) targets.push(myPos);
+                for (const uid in remotePlayers) {
+                    const rp = remotePlayers[uid];
+                    if (rp && typeof rp.x === 'number') targets.push([rp.x, rp.y]);
+                }
+            }
+            if (!targets.length) return;
+
+            // Move each chaser using local sensory BFS (only senses players within 6 tiles, does NOT have global graph)
+            chasers.forEach(([cx, cy]) => {
+                // Find nearest visible player within 6-tile sensory range
+                let closestTarget = null;
+                let minDist = 7;
+                targets.forEach(t => {
+                    const dist = Math.abs(t[0] - cx) + Math.abs(t[1] - cy);
+                    if (dist < minDist && hasLineOfSight(cx, cy, t[0], t[1])) {
+                        minDist = dist;
+                        closestTarget = t;
+                    }
+                });
+
+                if (!closestTarget) return; // No player near enough to sense!
+
+                // 1-step move towards target along clear tiles
+                const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+                let bestMove = null;
+                let bestD = minDist;
+                for (const [dx, dy] of dirs) {
+                    const nx = cx + dx, ny = cy + dy;
+                    if (nx < 0 || ny < 0 || nx >= GRID || ny >= GRID) continue;
+                    const tile = effTile(nx, ny);
+                    // Chasers cannot walk through walls, obstacles, locked doors, or hazard spikes
+                    if (tile === WALL || tile === OBSTACLE || tile === LOCKED || tile === HAZARD || tile === CHASER) continue;
+                    const d = Math.abs(closestTarget[0] - nx) + Math.abs(closestTarget[1] - ny);
+                    if (d < bestD) {
+                        bestD = d;
+                        bestMove = [nx, ny];
+                    }
+                }
+
+                if (bestMove) {
+                    grid[cy][cx] = EMPTY;
+                    grid[bestMove[1]][bestMove[0]] = CHASER;
+
+                    // If chaser caught the local player!
+                    if (gameMode === 'mp' && mpRole === 'player' && bestMove[0] === myPos[0] && bestMove[1] === myPos[1]) {
+                        triggerPlayerDeath("Chasing AI");
+                    }
+                }
+            });
+        }
+
         function tick() {
             if (!gameMode) { ctx.clearRect(0, 0, SCREEN, SCREEN); return; }
             render();
+            updateChasingAIs();
             if (gameMode === 'solo' && mode === 'simulation' && !simWaiting) {
                 let finished = false;
                 for (const a of ais) { if (moveAI(a)) finished = true; }
@@ -881,31 +1061,66 @@
             }
         }
 
-        function soloClick(x, y) {
-            if (pendingKey) {
-                if (grid[y][x] === DOOR) { grid[y][x] = LOCKED; keyTargets[pendingKey[0] + ',' + pendingKey[1]] = [x, y]; pendingKey = null; }
-                else if (grid[y][x] === LOCKED) { keyTargets[pendingKey[0] + ',' + pendingKey[1]] = [x, y]; pendingKey = null; }
-                return;
+        function cycleTile(current) {
+            // Cannot directly create a LOCKED door by clicking!
+            // DOOR (5) goes directly to KEY (7).
+            // A door only becomes LOCKED (6) when a KEY is pointed to it.
+            if (current === EMPTY) return WALL;
+            if (current === WALL) return OBSTACLE;
+            if (current === OBSTACLE) return FINISH;
+            if (current === FINISH) return SPAWN;
+            if (current === SPAWN) return DOOR;
+            if (current === DOOR) return KEY;
+            if (current === LOCKED) return KEY;
+            if (current === KEY) return HAZARD;
+            if (current === HAZARD) return TELEPORTER;
+            if (current === TELEPORTER) return ICE;
+            if (current === ICE) return BOOST;
+            if (current === BOOST) return SLOW;
+            if (current === SLOW) return TORCH;
+            if (current === TORCH) {
+                // Chasing AI is unlocked ONLY if achievement #1 'First Steps' is completed!
+                if (window.G && window.G.isChaserUnlocked && window.G.isChaserUnlocked()) return CHASER;
+                return EMPTY;
             }
-            if (grid[y][x] === EMPTY) grid[y][x] = WALL;
-            else if (grid[y][x] === WALL) grid[y][x] = OBSTACLE;
-            else if (grid[y][x] === OBSTACLE) grid[y][x] = FINISH;
-            else if (grid[y][x] === FINISH) grid[y][x] = SPAWN;
-            else if (grid[y][x] === SPAWN) grid[y][x] = DOOR;
-            else if (grid[y][x] === DOOR) grid[y][x] = LOCKED;
-            else if (grid[y][x] === LOCKED) { grid[y][x] = KEY; pendingKey = [x, y]; }
-            else if (grid[y][x] === KEY) {
+            if (current === CHASER) return EMPTY;
+            return EMPTY;
+        }
+
+        function handleTileClick(x, y) {
+            if (pendingKey) {
+                // If pointing a key: clicking a DOOR locks it and establishes the key-lock pairing!
+                if (grid[y][x] === DOOR || grid[y][x] === LOCKED) {
+                    grid[y][x] = LOCKED;
+                    keyTargets[pendingKey[0] + ',' + pendingKey[1]] = [x, y];
+                    pendingKey = null;
+                    return true;
+                }
+                pendingKey = null; // cancel pointing on any other tile
+            }
+            const old = grid[y][x];
+            const next = cycleTile(old);
+            if (old === KEY) {
                 const door = keyTargets[x + ',' + y];
-                grid[y][x] = HAZARD; delete keyTargets[x + ',' + y];
+                delete keyTargets[x + ',' + y];
                 if (door && grid[door[1]][door[0]] === LOCKED && !Object.values(keyTargets).some(d => d[0] === door[0] && d[1] === door[1])) {
-                    grid[door[1]][door[0]] = DOOR;
+                    grid[door[1]][door[0]] = DOOR; // Unlocks back to normal door if no keys target it
+                }
+            } else if (old === LOCKED) {
+                // If cycling a locked door, clear any key target pointing to it
+                for (const k in keyTargets) {
+                    if (keyTargets[k][0] === x && keyTargets[k][1] === y) delete keyTargets[k];
                 }
             }
-            else if (grid[y][x] === HAZARD) grid[y][x] = TELEPORTER;
-            else if (grid[y][x] === TELEPORTER) grid[y][x] = ICE;
-            else if (grid[y][x] === ICE) grid[y][x] = BOOST;
-            else if (grid[y][x] === BOOST) grid[y][x] = SLOW;
-            else if (grid[y][x] === SLOW) grid[y][x] = EMPTY;
+            grid[y][x] = next;
+            if (next === KEY) {
+                pendingKey = [x, y]; // prompt user to point the key to a door
+            }
+            return true;
+        }
+
+        function soloClick(x, y) {
+            handleTileClick(x, y);
         }
 
         function deleteTile(x, y) {
@@ -930,19 +1145,7 @@
             if (mpPhase !== 'lobby') return;
             if (spawnMode) { window.NET.setSpawn([x, y]); return; }
             if (isHost || canEdit) {
-                if (grid[y][x] === EMPTY) grid[y][x] = WALL;
-                else if (grid[y][x] === WALL) grid[y][x] = OBSTACLE;
-                else if (grid[y][x] === OBSTACLE) grid[y][x] = FINISH;
-                else if (grid[y][x] === FINISH) grid[y][x] = SPAWN;
-                else if (grid[y][x] === SPAWN) grid[y][x] = DOOR;
-                else if (grid[y][x] === DOOR) grid[y][x] = LOCKED;
-                else if (grid[y][x] === LOCKED) grid[y][x] = KEY;
-                else if (grid[y][x] === KEY) grid[y][x] = HAZARD;
-                else if (grid[y][x] === HAZARD) grid[y][x] = TELEPORTER;
-                else if (grid[y][x] === TELEPORTER) grid[y][x] = ICE;
-                else if (grid[y][x] === ICE) grid[y][x] = BOOST;
-                else if (grid[y][x] === BOOST) grid[y][x] = SLOW;
-                else if (grid[y][x] === SLOW) grid[y][x] = EMPTY;
+                handleTileClick(x, y);
                 window.NET.pushMaze();
             }
         });
@@ -1018,7 +1221,50 @@
             }
         });
 
+        function triggerPlayerDeath(reason = "Hazard") {
+            if (isEliminated) return;
+            isEliminated = true;
+            hasKey = false;
+            hasTorch = false;
+            stunned = false;
+            if (window.NET && window.NET.updateTorch) window.NET.updateTorch(false);
+            
+            // Show Death Modal with countdown
+            deathCountdownSeconds = 5;
+            const modal = document.getElementById('deathModal');
+            const numEl = document.getElementById('deathCountNum');
+            if (numEl) numEl.textContent = deathCountdownSeconds;
+            if (modal) modal.classList.remove('hidden');
+
+            if (deathCountdownInterval) clearInterval(deathCountdownInterval);
+            deathCountdownInterval = setInterval(() => {
+                deathCountdownSeconds--;
+                if (numEl) numEl.textContent = deathCountdownSeconds;
+                if (deathCountdownSeconds <= 0) {
+                    clearInterval(deathCountdownInterval);
+                    deathCountdownInterval = null;
+                    if (modal) modal.classList.add('hidden');
+                    isEliminated = false;
+                    myPos = mySpawn.slice();
+                    if (window.NET) window.NET.updatePos(myPos);
+                }
+            }, 1000);
+        }
+
+        // Death exit button to spectator
+        const deathExitBtn = document.getElementById('deathExitBtn');
+        if (deathExitBtn) {
+            deathExitBtn.onclick = () => {
+                if (deathCountdownInterval) { clearInterval(deathCountdownInterval); deathCountdownInterval = null; }
+                const modal = document.getElementById('deathModal');
+                if (modal) modal.classList.add('hidden');
+                isEliminated = false;
+                if (window.NET) window.NET.stop();
+            };
+        }
+
         function movePlayer(dx, dy) {
+            if (isEliminated) return;
             if (gameMode !== 'mp' || mpPhase !== 'playing' || mpRole !== 'player') return;
             if (Date.now() < startTs + 3000) return;
             if (stunned) { stunned = false; return; }
@@ -1029,7 +1275,11 @@
             if (t === WALL || t === OBSTACLE) return;
             if (t === LOCKED && !hasKey) return;
             let keyPicked = false, doorOpened = false;
-            if (t === HAZARD) { hasKey = false; stunned = false; myPos = mySpawn.slice(); window.NET.updatePos(myPos); return; }
+            if (t === HAZARD || t === CHASER) { triggerPlayerDeath(t === CHASER ? "Chasing AI" : "Hazard"); return; }
+            if (t === TORCH) {
+                hasTorch = true;
+                if (window.NET && window.NET.updateTorch) window.NET.updateTorch(true);
+            }
             if (t === TELEPORTER) {
                 const p = teleportPartner(nx, ny);
                 myPos = p ? p : [nx, ny];
@@ -1112,7 +1362,7 @@
             getLocalSpawn() { return mySpawn; },
             resetLocal() { hasKey = false; stunned = false; },
             setSpawnMode(on) { spawnMode = on; },
-            setRemotePlayer(uid, name, x, y, emoji, colorIdx) { remotePlayers[uid] = { name, x, y, emoji: emoji || '' }; if (Number.isInteger(colorIdx)) playerColors[uid] = colorIdx; },
+            setRemotePlayer(uid, name, x, y, emoji, colorIdx, torch) { remotePlayers[uid] = { name, x, y, emoji: emoji || '', hasTorch: !!torch }; if (Number.isInteger(colorIdx)) playerColors[uid] = colorIdx; },
             setRemoteSpawn(uid, sp) { remoteSpawns[uid] = sp; },
             removeRemote(uid) { delete remotePlayers[uid]; delete remoteSpawns[uid]; delete playerColors[uid]; },
             clearRemote() { remotePlayers = {}; remoteSpawns = {}; },
@@ -1765,9 +2015,24 @@
                 if (!d) { leaveLobby(true); return; }
                 lobbyMax = d.maxPlayers || 4;
                 gameStartTs = d.startTs || 0;
-                if (!isHost && d.grid && d.gridSize) {
+                // Synchronize server settings for all participants:
+                if (d.maxPlayers && $('mpMaxPlayers').value !== String(d.maxPlayers)) {
+                    $('mpMaxPlayers').value = String(d.maxPlayers);
+                }
+                if (d.objective !== undefined && document.activeElement !== $('objectiveInput')) {
+                    $('objectiveInput').value = d.objective || '';
+                }
+                if (d.gridSize && $('mpGridSize').value !== String(d.gridSize)) {
+                    $('mpGridSize').value = String(d.gridSize);
+                }
+
+                // Refresh maze for ALL clients (including host when another player edits):
+                if (d.grid && d.gridSize) {
                     const sig = d.gridSize + '|' + d.grid.join(',') + '|' + JSON.stringify(d.keyTargets || {});
-                    if (sig !== lastMazeSig) { lastMazeSig = sig; window.G.setMaze(d.gridSize, d.grid, d.keyTargets || {}); }
+                    if (sig !== lastMazeSig) {
+                        lastMazeSig = sig;
+                        window.G.setMaze(d.gridSize, d.grid, d.keyTargets || {});
+                    }
                 }
                 if (d.ai) { window.G.clearAI(); for (const i in d.ai) { const a = d.ai[i]; if (a && typeof a.x === 'number' && typeof a.y === 'number') window.G.setAI(i, a.x, a.y, a.name, a.method); } } else window.G.clearAI();
                 window.G.setKeyDoorState(d.keysTaken, d.doorsOpen);
@@ -1816,7 +2081,7 @@
                     $('playerList').appendChild(li);
                     if (uid === myUid) window.G.setCanEdit(!!p.canEdit);
                     if (p.spawn) window.G.setRemoteSpawn(uid, p.spawn);
-                    if (p.pos && p.role === 'player') window.G.setRemotePlayer(uid, p.name, p.pos[0], p.pos[1], p.emoji, p.colorIdx);
+                    if (p.pos && p.role === 'player') window.G.setRemotePlayer(uid, p.name, p.pos[0], p.pos[1], p.emoji, p.colorIdx, !!p.hasTorch);
                 }
                 $('lobbyCount').textContent = count + '/' + (lobbyMax || 4) + ' players';
                 // Robust Leaderboard Evaluation with 30s Grace Countdown
@@ -1969,6 +2234,10 @@
             pushMaze() { pushMazeThrottled(); },
             updatePos(pos) { if (!lobbyCode) return; updatePosThrottled(pos); },
             chat(text) { if (!lobbyCode || !rtdb || !text) return; const t = String(text).slice(0, 256); if (!t.trim()) return; push(ref(rtdb, 'lobbies/' + lobbyCode + '/chat'), { uid: myUid, name: myName, text: t, ts: Date.now() }).catch(() => {}); },
+            updateTorch(state) {
+                if (!lobbyCode || !myUid || !rtdb) return;
+                set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/hasTorch'), !!state).catch(() => {});
+            },
             finish() {
                 if (!lobbyCode || !myUid || hasFinishedRace) return;
                 hasFinishedRace = true;
@@ -1978,6 +2247,7 @@
                 const elapsed = Math.max(0, finishTs - (gameStartTs || finishTs));
                 const maze = window.G.getMaze();
                 const isPb = recordPB(elapsed, (maze && maze.size) || 20);
+                if (window.G && window.G.unlockAchievement) window.G.unlockAchievement(1); // Achievement #1: First Steps (Unlocks Chasing AI!)
                 window.NET.chat(` reached the finish in ${(elapsed/1000).toFixed(1)}s!${isPb ? ' 🎉 (NEW PERSONAL BEST!)' : ''}`);
             },
             stop() {

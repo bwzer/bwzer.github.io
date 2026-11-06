@@ -22,7 +22,7 @@
           ".write": "auth != null && root.child('lobbies').child($code).child('players').child(auth.uid).child('canEdit').val() === true",
           ".validate": "newData.hasChildren(['0'])",
           "$i": {
-            ".validate": "$i.matches(/^[0-9]{1,5}$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 12"
+            ".validate": "$i.matches(/^[0-9]{1,5}$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 14"
           }
         },
         "keyTargets": {
@@ -119,6 +119,7 @@
             "connected": { ".validate": "newData.isBoolean()" },
             "finished": { ".validate": "newData.isBoolean()" },
             "finishAt": { ".validate": "newData.isNumber()" },
+            "hasTorch": { ".validate": "newData.isBoolean()" },
             "emoji": { ".validate": "newData.isString() && newData.val().length <= 16" },
             "colorIdx": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 5" },
             "$other": { ".validate": false }
