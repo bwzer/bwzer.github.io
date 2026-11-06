@@ -1887,10 +1887,170 @@
             }
         }
 
+        // Prefetch mazes into memory immediately on auth so Gallery opens instantly with no waiting
+        authReady.then(ok => {
+            if (ok && db && !cachedGalleryMazes) {
+                getDocs(collection(db, "grids")).then(snap => {
+                    const list = [];
+                    snap.forEach(d => {
+                        const data = d.data();
+                        if (data && data.name && data.grid && data.size) list.push({ id: d.id, ...data });
+                    });
+                    list.sort((a, b) => {
+                        const ta = a.savedAt ? (a.savedAt.toMillis ? a.savedAt.toMillis() : new Date(a.savedAt).getTime()) : 0;
+                        const tb = b.savedAt ? (b.savedAt.toMillis ? b.savedAt.toMillis() : new Date(b.savedAt).getTime()) : 0;
+                        return tb - ta;
+                    });
+                    cachedGalleryMazes = list;
+                }).catch(() => {});
+            }
+        });
+
         $('openGalleryBtn').onclick = openMazeGallery;
         $('modeGalleryBtn').onclick = openMazeGallery;
         $('closeGalleryBtn').onclick = () => hide('galleryModal');
 
+        // ==========================================
+        // 100 Achievements Section
+        // ==========================================
+        let myAchievements = Storage.get('achievements', { unlocked: {}, progress: {} });
+        window.G.isChaserUnlocked = () => !!(myAchievements.unlocked && myAchievements.unlocked[1]);
+
+        function unlockAchievement(id) {
+            const ach = ACHIEVEMENTS.find(a => a.id === id);
+            if (!ach) return;
+            if (!myAchievements.unlocked) myAchievements.unlocked = {};
+            if (myAchievements.unlocked[id]) return; // already unlocked
+            myAchievements.unlocked[id] = Date.now();
+            Storage.set('achievements', myAchievements);
+            updateAchStats();
+            // Show celebratory toast notification
+            showAchNotification(ach);
+            if (id === 1) {
+                setTimeout(() => showAchNotification({ name: "Chasing AI Unlocked!", desc: "New building block available in Solo & Multiplayer editor!" }), 2500);
+            }
+        }
+        window.G.unlockAchievement = unlockAchievement;
+
+        function showAchNotification(ach) {
+            const toast = document.createElement('div');
+            toast.style.cssText = 'position:fixed; bottom:20px; right:20px; background:#241b33; border:2px solid #ffd54a; border-radius:10px; padding:12px 18px; z-index:99; box-shadow:0 8px 30px rgba(255,213,74,0.4); max-width:320px; text-align:left;';
+            toast.innerHTML = `<div style="font-size:0.75rem; color:#ffd54a; font-weight:800; text-transform:uppercase;">🏆 Achievement Unlocked!</div><div style="font-size:0.95rem; font-weight:700; color:#fff; margin:2px 0;">${ach.name}</div><div style="font-size:0.8rem; color:#b8a8cc;">${ach.desc}</div>`;
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.5s'; setTimeout(() => toast.remove(), 500); }, 4000);
+        }
+
+        function updateAchStats() {
+            const count = Object.keys(myAchievements.unlocked || {}).length;
+            const el = $('achStatsCount');
+            if (el) el.textContent = `Unlocked: ${count} / ${ACHIEVEMENTS.length} (${Math.round(count / ACHIEVEMENTS.length * 100)}%)`;
+        }
+
+        function renderAchievements(tierFilter = 'all') {
+            const gridEl = $('achGrid');
+            if (!gridEl) return;
+            gridEl.innerHTML = '';
+            const filtered = tierFilter === 'all' ? ACHIEVEMENTS : ACHIEVEMENTS.filter(a => String(a.tier) === String(tierFilter));
+            filtered.forEach(a => {
+                const isUnlocked = !!(myAchievements.unlocked && myAchievements.unlocked[a.id]);
+                const card = document.createElement('div');
+                card.className = 'ach-card' + (isUnlocked ? ' unlocked' : '');
+                const tierLabels = { 1: '1★ Casual', 2: '2★ Intermed', 3: '3★ Hard', 4: '4★ Extreme', 5: '5★ Nightmare', 6: '☠️ Impossible' };
+                card.innerHTML = `
+                    <div class="ach-header">
+                        <span class="ach-title">${isUnlocked ? '🏆 ' : '🔒 '}${a.name}</span>
+                        <span class="tier-badge tier-${a.tier}">${tierLabels[a.tier] || a.tier}</span>
+                    </div>
+                    <div class="ach-desc">${a.desc}</div>
+                    ${isUnlocked ? `<div style="font-size:0.72rem; color:#ffd54a; margin-top:6px; font-weight:600;">✓ Completed ${new Date(myAchievements.unlocked[a.id]).toLocaleDateString()}</div>` : ''}
+                `;
+                gridEl.appendChild(card);
+            });
+            updateAchStats();
+        }
+
+        const openAchBtn = $('openAchBtn');
+        if (openAchBtn) {
+            openAchBtn.onclick = () => {
+                renderAchievements($('achTierFilter').value);
+                show('achievementsModal');
+            };
+        }
+        const closeAchBtn = $('closeAchBtn');
+        if (closeAchBtn) closeAchBtn.onclick = () => hide('achievementsModal');
+        const achTierFilter = $('achTierFilter');
+        if (achTierFilter) achTierFilter.onchange = (e) => renderAchievements(e.target.value);
+
+        // ==========================================
+        // Friends & Rivals Section
+        // ==========================================
+        let myFriends = Storage.get('friends', []); // array of { name, code, addedAt }
+        function renderFriends() {
+            const listEl = $('friendsList');
+            if (!listEl) return;
+            listEl.innerHTML = '';
+            if (!myFriends.length) {
+                listEl.innerHTML = '<div style="color:#b8a8cc; font-size:0.85rem; padding:16px; text-align:center;">No friends added yet. Add players by their Gamer Tag!</div>';
+                return;
+            }
+            myFriends.forEach((f, idx) => {
+                const row = document.createElement('div');
+                row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-bottom:1px solid #3a2b50;';
+                row.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:1.2rem;">👤</span>
+                        <div>
+                            <div style="font-weight:700; color:#fff; font-size:0.9rem;">${f.name}</div>
+                            <div style="font-size:0.72rem; color:#b8a8cc;">${f.code ? 'Code: ' + f.code : 'Added friend'}</div>
+                        </div>
+                    </div>
+                    <button class="btn ghost" style="padding:3px 8px; font-size:0.75rem; color:#ff5f52;">Remove</button>
+                `;
+                row.querySelector('button').onclick = () => {
+                    myFriends.splice(idx, 1);
+                    Storage.set('friends', myFriends);
+                    renderFriends();
+                };
+                listEl.appendChild(row);
+            });
+        }
+
+        const openFriendsBtn = $('openFriendsBtn');
+        if (openFriendsBtn) {
+            openFriendsBtn.onclick = () => {
+                $('myFriendCodeInput').value = myUid ? myUid.slice(0, 8).toUpperCase() : 'BWZ-GUEST';
+                $('friendStatus').textContent = '';
+                renderFriends();
+                show('friendsModal');
+            };
+        }
+        const closeFriendsBtn = $('closeFriendsBtn');
+        if (closeFriendsBtn) closeFriendsBtn.onclick = () => hide('friendsModal');
+        const copyFriendCodeBtn = $('copyFriendCodeBtn');
+        if (copyFriendCodeBtn) {
+            copyFriendCodeBtn.onclick = () => {
+                const v = $('myFriendCodeInput').value;
+                if (navigator.clipboard) navigator.clipboard.writeText(v).catch(() => {});
+                copyFriendCodeBtn.textContent = 'Copied!';
+                setTimeout(() => { copyFriendCodeBtn.textContent = 'Copy'; }, 1500);
+            };
+        }
+        const addFriendBtn = $('addFriendBtn');
+        if (addFriendBtn) {
+            addFriendBtn.onclick = () => {
+                const val = $('addFriendInput').value.trim();
+                if (!val) { $('friendStatus').textContent = 'Enter a Gamer Tag or Friend Code'; return; }
+                if (myFriends.some(f => f.name.toLowerCase() === val.toLowerCase() || f.code === val)) {
+                    $('friendStatus').textContent = 'Friend already in your list!';
+                    return;
+                }
+                myFriends.push({ name: val, code: val.length === 8 ? val : null, addedAt: Date.now() });
+                Storage.set('friends', myFriends);
+                $('addFriendInput').value = '';
+                $('friendStatus').textContent = `Added ${val} to your friends!`;
+                renderFriends();
+            };
+        }
         let myName = (myProfile && myProfile.name) || '', lobbyCode = '', isHost = false, spawnMode = false;
         let aiRunning = false;
         let aiCount = 1, started = false, myReady = false;
