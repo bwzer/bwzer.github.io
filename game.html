@@ -355,8 +355,9 @@
         <div id="profileError" class="status err"></div>
         <div style="display:flex; gap:8px; justify-content:center; margin-top:14px;">
             <button id="saveProfileBtn" class="btn" style="background:#ffd54a; color:#1a0f00; font-weight:700;">Enter the Arena</button>
-            <button id="cancelProfileBtn" class="btn ghost hidden">Cancel</button>
+            <button id="cancelProfileBtn" class="btn ghost">Skip for now</button>
         </div>
+    </div>
 
     <div id="helpModal" class="modal hidden">
         <h2>Help</h2>
@@ -512,7 +513,7 @@
     </div>
 
     <a class="back" href="index.html">&larr; Back to home</a>
-
+    <script src="achievements.js"></script>
     <script>
         const FPS = 10;
         const MIN_GRID = 3, MAX_GRID = 150;
@@ -1547,6 +1548,17 @@
             recenterCam();
             if (isMp && window.NET) window.NET.pushMaze();
         }
+        // Wire core game mode switches immediately so buttons respond without delay
+        const $id = id => document.getElementById(id);
+        const hideEl = id => { const el = $id(id); if (el) el.classList.add('hidden'); };
+        const showEl = id => { const el = $id(id); if (el) el.classList.remove('hidden'); };
+        const soloBtn = $id('soloBtn');
+        if (soloBtn) soloBtn.onclick = () => { hideEl('modeScreen'); window.G.setGameMode('solo'); window.G.setLobbyPhase(null); };
+        const mpBtn = $id('mpBtn');
+        if (mpBtn) mpBtn.onclick = () => { hideEl('modeScreen'); showEl('mpSetup'); window.G.setGameMode(null); };
+        const backBtn = $id('backBtn');
+        if (backBtn) backBtn.onclick = () => { hideEl('mpSetup'); showEl('modeScreen'); window.G.setGameMode(null); };
+
         document.getElementById('genBtn').onclick = () => generateAndApply(false);
         document.getElementById('helpOpenBtn').onclick = () => document.getElementById('helpModal').classList.remove('hidden');
         document.getElementById('helpCloseBtn').onclick = () => document.getElementById('helpModal').classList.add('hidden');
@@ -1754,14 +1766,12 @@
             hide('profileModal');
         };
         $('cancelProfileBtn').onclick = () => {
-            if (myProfile) hide('profileModal');
+            hide('profileModal');
         };
         $('profilePill').onclick = () => openProfileModal(true);
 
-        // Check onboarding on boot
-        if (!myProfile) {
-            setTimeout(() => openProfileModal(false), 300);
-        } else {
+        // Set up profile if already stored; do NOT pop up a blocking modal over mode buttons!
+        if (myProfile) {
             applyProfileToUI();
         }
 
@@ -1915,9 +1925,10 @@
         // ==========================================
         let myAchievements = Storage.get('achievements', { unlocked: {}, progress: {} });
         window.G.isChaserUnlocked = () => !!(myAchievements.unlocked && myAchievements.unlocked[1]);
+        const getAchList = () => (window.ACHIEVEMENTS || []);
 
         function unlockAchievement(id) {
-            const ach = ACHIEVEMENTS.find(a => a.id === id);
+            const ach = getAchList().find(a => a.id === id);
             if (!ach) return;
             if (!myAchievements.unlocked) myAchievements.unlocked = {};
             if (myAchievements.unlocked[id]) return; // already unlocked
@@ -1943,16 +1954,17 @@
         function updateAchStats() {
             const count = Object.keys(myAchievements.unlocked || {}).length;
             const el = $('achStatsCount');
-            if (el) el.textContent = `Unlocked: ${count} / ${ACHIEVEMENTS.length} (${Math.round(count / ACHIEVEMENTS.length * 100)}%)`;
+            const total = getAchList().length || 100;
+            if (el) el.textContent = `Unlocked: ${count} / ${total} (${Math.round(count / total * 100)}%)`;
         }
 
         function renderAchievements(tierFilter = 'all') {
             const gridEl = $('achGrid');
             if (!gridEl) return;
             gridEl.innerHTML = '';
-            const filtered = tierFilter === 'all' ? ACHIEVEMENTS : ACHIEVEMENTS.filter(a => String(a.tier) === String(tierFilter));
+            const all = getAchList();
+            const filtered = tierFilter === 'all' ? all : all.filter(a => String(a.tier) === String(tierFilter));
             filtered.forEach(a => {
-                const isUnlocked = !!(myAchievements.unlocked && myAchievements.unlocked[a.id]);
                 const card = document.createElement('div');
                 card.className = 'ach-card' + (isUnlocked ? ' unlocked' : '');
                 const tierLabels = { 1: '1★ Casual', 2: '2★ Intermed', 3: '3★ Hard', 4: '4★ Extreme', 5: '5★ Nightmare', 6: '☠️ Impossible' };

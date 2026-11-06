@@ -1,4 +1,4 @@
-export const ACHIEVEMENTS = [
+window.ACHIEVEMENTS = [
   // Speed & Precision Racing (1–25)
   { id: 1, name: "First Steps", tier: 1, desc: "Reach the finish line in any maze." },
   { id: 2, name: "Speed Demon", tier: 2, desc: "Finish any maze in under 10.0s." },
@@ -111,3 +111,4 @@ export const ACHIEVEMENTS = [
   { id: 99, name: "Demigod of Mazes", tier: 5, desc: "Win 50 multiplayer races on 80×80+ arenas with zero Hazard respawns and an average finish time under 40 seconds." },
   { id: 100, name: "God of the Labyrinth", tier: 6, desc: "On a 150×150 maximum-scale labyrinth containing at least 10 Keys, 10 Locked Doors, and 25 Hazards: take 1st place in a full 6-player multiplayer lobby in under 55.0 seconds flat without triggering a single Hazard, teleporter misstep, or dead-end turn." }
 ];
+if (typeof exports !== 'undefined') exports.ACHIEVEMENTS = window.ACHIEVEMENTS;
