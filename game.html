@@ -177,9 +177,9 @@
             </div>
         </div>
         <div style="display:flex; align-items:center; gap:8px;">
-            <button id="openAchBtn" class="btn ghost" style="color:#ffd54a; border-color:#ffd54a;">🏆 Achievements</button>
-            <button id="openFriendsBtn" class="btn ghost" style="color:#ffd54a; border-color:#ffd54a;">👥 Friends</button>
-            <button id="openGalleryBtn" class="btn" style="background: linear-gradient(180deg, #ffd54a 0%, #aa820a 100%); color:#1a0f00; font-weight:700; border:none; box-shadow:0 2px 8px rgba(255,213,74,0.3);">🏛️ Maze Gallery</button>
+            <button id="openAchBtn" class="btn ghost" style="color:#ffd54a; border-color:#ffd54a;" onclick="document.getElementById('achievementsModal').classList.remove('hidden')">🏆 Achievements</button>
+            <button id="openFriendsBtn" class="btn ghost" style="color:#ffd54a; border-color:#ffd54a;" onclick="document.getElementById('friendsModal').classList.remove('hidden')">👥 Friends</button>
+            <button id="openGalleryBtn" class="btn" style="background: linear-gradient(180deg, #ffd54a 0%, #aa820a 100%); color:#1a0f00; font-weight:700; border:none; box-shadow:0 2px 8px rgba(255,213,74,0.3);" onclick="document.getElementById('galleryModal').classList.remove('hidden')">🏛️ Maze Gallery</button>
             <div class="pb-chip" id="topPb"><span>⚡ Best:</span> <b id="topPbVal">--</b></div>
         </div>
     </div>
@@ -189,10 +189,10 @@
 
     <div id="modeScreen" class="screen">
         <h2>Choose a mode</h2>
-        <button id="soloBtn" class="btn">Solo (AI only)</button>
-        <button id="mpBtn" class="btn">Multiplayer</button>
+        <button id="soloBtn" class="btn" onclick="document.getElementById('modeScreen').classList.add('hidden'); if(window.G){window.G.setGameMode('solo'); window.G.setLobbyPhase(null);}">Solo (AI only)</button>
+        <button id="mpBtn" class="btn" onclick="document.getElementById('modeScreen').classList.add('hidden'); document.getElementById('mpSetup').classList.remove('hidden'); if(window.G){window.G.setGameMode(null);}">Multiplayer</button>
         <div style="margin-top:12px;">
-            <button id="modeGalleryBtn" class="btn ghost">🏛️ View Majestic Maze Gallery</button>
+            <button id="modeGalleryBtn" class="btn ghost" onclick="document.getElementById('galleryModal').classList.remove('hidden')">🏛️ View Majestic Maze Gallery</button>
         </div>
     </div>
 
@@ -231,7 +231,7 @@
         </div>
         <div id="lobbyList"></div>
         <div id="mpStatus" class="status"></div>
-        <button id="backBtn" class="btn ghost">Back</button>
+        <button id="backBtn" class="btn ghost" onclick="document.getElementById('mpSetup').classList.add('hidden'); document.getElementById('modeScreen').classList.remove('hidden'); if(window.G){window.G.setGameMode(null);}">Back</button>
     </div>
 
     <div id="lobbyScreen" class="screen hidden">
@@ -373,7 +373,7 @@
     <div id="friendsModal" class="modal hidden" style="max-width:480px;">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #3a2b50; padding-bottom:8px;">
             <h2 style="margin:0; color:#ffd54a;">👥 Friends &amp; Rivals</h2>
-            <button id="closeFriendsBtn" class="btn ghost" style="padding:4px 10px;">✕</button>
+            <button id="closeFriendsBtn" class="btn ghost" style="padding:4px 10px;" onclick="document.getElementById('friendsModal').classList.add('hidden')">✕</button>
         </div>
         <div style="margin:12px 0 8px; text-align:left; background:#1e1630; padding:10px 12px; border-radius:8px; border:1px solid #3a2b50;">
             <div style="font-size:0.8rem; color:#b8a8cc;">Your Friend Code:</div>
@@ -402,7 +402,7 @@
     <div id="achievementsModal" class="modal modal-large hidden">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #3a2b50; padding-bottom:8px;">
             <h2 style="margin:0; color:#ffd54a;">🏆 100 Achievements Catalog</h2>
-            <button id="closeAchBtn" class="btn ghost" style="padding:4px 10px;">✕ Close</button>
+            <button id="closeAchBtn" class="btn ghost" style="padding:4px 10px;" onclick="document.getElementById('achievementsModal').classList.add('hidden')">✕ Close</button>
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center; margin:10px 0 6px;">
             <div id="achStatsCount" style="color:#ffd54a; font-weight:700; font-size:0.9rem;">Unlocked: 0 / 100</div>
