@@ -979,9 +979,10 @@
             if (now - lastChaserTick < 400) return;
             lastChaserTick = now;
 
-            // Only run during active gameplay
-            const isActive = (gameMode === 'solo' && mode === 'simulation' && !simWaiting) || (gameMode === 'mp' && mpPhase === 'playing');
-            if (!isActive) return;
+            // Only run during active gameplay, and ONLY after the 3-second starting countdown finishes
+            const isMatchActive = (gameMode === 'solo' && mode === 'simulation' && !simWaiting) || 
+                                  (gameMode === 'mp' && mpPhase === 'playing' && Date.now() >= startTs + 3500);
+            if (!isMatchActive) return;
 
             // Gather all chaser positions on the grid
             const chasers = [];
@@ -997,10 +998,15 @@
             if (gameMode === 'solo') {
                 ais.forEach(a => { if (a && a.pos) targets.push(a.pos); });
             } else {
-                if (mpRole === 'player' && !isEliminated) targets.push(myPos);
+                // Players on their spawn tile or during elimination are immune!
+                const onSpawn = (myPos[0] === mySpawn[0] && myPos[1] === mySpawn[1]);
+                if (mpRole === 'player' && !isEliminated && !onSpawn) targets.push(myPos);
                 for (const uid in remotePlayers) {
                     const rp = remotePlayers[uid];
-                    if (rp && typeof rp.x === 'number') targets.push([rp.x, rp.y]);
+                    const sp = remoteSpawns[uid] || [0, 0];
+                    if (rp && typeof rp.x === 'number' && !(rp.x === sp[0] && rp.y === sp[1])) {
+                        targets.push([rp.x, rp.y]);
+                    }
                 }
             }
             if (!targets.length) return;
@@ -1028,8 +1034,8 @@
                     const nx = cx + dx, ny = cy + dy;
                     if (nx < 0 || ny < 0 || nx >= GRID || ny >= GRID) continue;
                     const tile = effTile(nx, ny);
-                    // Chasers cannot walk through walls, obstacles, locked doors, or hazard spikes
-                    if (tile === WALL || tile === OBSTACLE || tile === LOCKED || tile === HAZARD || tile === CHASER) continue;
+                    // Chasers cannot walk through walls, obstacles, locked doors, hazards, chasers, or player SPAWN tiles!
+                    if (tile === WALL || tile === OBSTACLE || tile === LOCKED || tile === HAZARD || tile === CHASER || tile === SPAWN) continue;
                     const d = Math.abs(closestTarget[0] - nx) + Math.abs(closestTarget[1] - ny);
                     if (d < bestD) {
                         bestD = d;
@@ -1279,7 +1285,9 @@
             if (t === WALL || t === OBSTACLE) return;
             if (t === LOCKED && !hasKey) return;
             let keyPicked = false, doorOpened = false;
-            if (t === HAZARD || t === CHASER) { triggerPlayerDeath(t === CHASER ? "Chasing AI" : "Hazard"); return; }
+            // Hazards and Chasers eliminate players, but SPAWN tile is always a safe zone!
+            const isSpawnPoint = (nx === mySpawn[0] && ny === mySpawn[1]);
+            if ((t === HAZARD || t === CHASER) && !isSpawnPoint) { triggerPlayerDeath(t === CHASER ? "Chasing AI" : "Hazard"); return; }
             if (t === TORCH) {
                 hasTorch = true;
                 if (window.NET && window.NET.updateTorch) window.NET.updateTorch(true);
