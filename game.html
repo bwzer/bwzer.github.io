@@ -369,6 +369,9 @@
             <p><b>Spectate:</b> <kbd>,</kbd> / <kbd>.</kbd> switch who you follow.</p>
             <p><b>Lobby:</b> draw or <b>Generate maze</b>, place your spawn, Ready, then Start (host).</p>
         </div>
+        <button id="helpCloseBtn" class="btn" onclick="document.getElementById('helpModal').classList.add('hidden')">OK</button>
+    </div>
+
     <!-- Friends Modal -->
     <div id="friendsModal" class="modal hidden" style="max-width:480px;">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #3a2b50; padding-bottom:8px;">
@@ -1572,9 +1575,12 @@
         });
 
 
-        document.getElementById('genBtn').onclick = () => generateAndApply(false);
-        document.getElementById('helpOpenBtn').onclick = () => document.getElementById('helpModal').classList.remove('hidden');
-        document.getElementById('helpCloseBtn').onclick = () => document.getElementById('helpModal').classList.add('hidden');
+        const genBtn = document.getElementById('genBtn');
+        if (genBtn) genBtn.onclick = () => generateAndApply(false);
+        const helpOpenBtn = document.getElementById('helpOpenBtn');
+        if (helpOpenBtn) helpOpenBtn.onclick = () => document.getElementById('helpModal').classList.remove('hidden');
+        const helpCloseBtn = document.getElementById('helpCloseBtn');
+        if (helpCloseBtn) helpCloseBtn.onclick = () => document.getElementById('helpModal').classList.add('hidden');
         document.querySelectorAll('.dbtn').forEach(b => {
             const p = b.dataset.d.split(',').map(Number);
             let iv = null;
@@ -2166,7 +2172,12 @@
                 // Player entry and password proof are written together; the rules reject the join if the password is wrong.
                 const writes = { ['lobbies/' + code + '/players/' + myUid]: { name, isHost: false, role: 'lobby', spawn: [0, 0], connected: true, emoji: $('mpEmoji').value, colorIdx: parseInt($('mpColor').value, 10) || 0 } };
                 if (lobby.private) writes['lobbySecrets/' + code + '/joins/' + myUid] = pw;
-                try { await update(ref(rtdb), writes); }
+                try {
+                    await update(ref(rtdb), writes);
+                } catch (e) {
+                    status($('mpStatus'), (lobby.private && /permission/i.test((e && e.message) || '')) ? 'Wrong password' : 'Join failed: ' + rtErr(e), true);
+                    return;
+                }
                 lobbyCode = code; isHost = false;
                 onDisconnect(ref(rtdb, 'lobbies/' + code + '/players/' + myUid)).remove();
                 enterLobby(code, name, false);
