@@ -298,7 +298,7 @@
     <div id="galleryModal" class="modal modal-large hidden">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #3a2b50; padding-bottom:8px;">
             <h2 style="margin:0; color:#ffd54a; font-family:Georgia, serif; letter-spacing:1px;">🏛️ The Royal Gallery of Mazes</h2>
-            <button id="closeGalleryBtn" class="btn ghost" style="padding:4px 12px;">✕ Close</button>
+            <button id="closeGalleryBtn" class="btn ghost" style="padding:4px 12px;" onclick="document.getElementById('galleryModal').classList.add('hidden')">✕ Close</button>
         </div>
         <p style="color:#b8a8cc; font-size:0.88rem; margin:8px 0 4px;">Peruse historic mazes crafted by players. Click any frame to inspect, load into Solo, or Host in Multiplayer.</p>
         <div id="galleryStatus" class="status" style="font-size:0.85rem; color:#ffd54a;"></div>
@@ -1557,7 +1557,20 @@
         const mpBtn = $id('mpBtn');
         if (mpBtn) mpBtn.onclick = () => { hideEl('modeScreen'); showEl('mpSetup'); window.G.setGameMode(null); };
         const backBtn = $id('backBtn');
-        if (backBtn) backBtn.onclick = () => { hideEl('mpSetup'); showEl('modeScreen'); window.G.setGameMode(null); };
+        // Global modal closer helper
+        const closeGalleryModal = () => hideEl('galleryModal');
+        const closeGalBtn = $id('closeGalleryBtn');
+        if (closeGalBtn) closeGalBtn.onclick = closeGalleryModal;
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                hideEl('galleryModal');
+                hideEl('achievementsModal');
+                hideEl('friendsModal');
+                hideEl('profileModal');
+                hideEl('helpModal');
+            }
+        });
+
 
         document.getElementById('genBtn').onclick = () => generateAndApply(false);
         document.getElementById('helpOpenBtn').onclick = () => document.getElementById('helpModal').classList.remove('hidden');
@@ -1965,9 +1978,9 @@
             const all = getAchList();
             const filtered = tierFilter === 'all' ? all : all.filter(a => String(a.tier) === String(tierFilter));
             filtered.forEach(a => {
+                const isUnlocked = !!(myAchievements.unlocked && myAchievements.unlocked[a.id]);
                 const card = document.createElement('div');
                 card.className = 'ach-card' + (isUnlocked ? ' unlocked' : '');
-                const tierLabels = { 1: '1★ Casual', 2: '2★ Intermed', 3: '3★ Hard', 4: '4★ Extreme', 5: '5★ Nightmare', 6: '☠️ Impossible' };
                 card.innerHTML = `
                     <div class="ach-header">
                         <span class="ach-title">${isUnlocked ? '🏆 ' : '🔒 '}${a.name}</span>
