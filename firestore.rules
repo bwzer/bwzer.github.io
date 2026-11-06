@@ -1,0 +1,22 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Saved mazes: any signed-in player can read and add; nobody can edit or delete.
+    match /grids/{gridId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && isValidGrid(request.resource.data);
+      allow update, delete: if false;
+    }
+
+    function isValidGrid(d) {
+      return d.keys().hasAll(['name', 'size', 'grid', 'savedAt', 'ownerUid'])
+        && d.keys().hasOnly(['name', 'size', 'grid', 'keyTargets', 'savedAt', 'ownerUid'])
+        && d.ownerUid == request.auth.uid
+        && d.name is string && d.name.size() <= 60
+        && d.size is int && d.size >= 3 && d.size <= 150
+        && d.grid is list && d.grid.size() == d.size * d.size
+        && (!('keyTargets' in d) || d.keyTargets is map)
+        && d.savedAt == request.time;
+    }
+  }
+}

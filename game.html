@@ -1145,7 +1145,8 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+        import { initializeAuth, browserSessionPersistence, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
         import { getDatabase, ref, set, get, push, onValue, onChildAdded, onDisconnect, remove, update } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-database.js";
 
         const ALLOWED_HOSTS = ['bwzer.github.io', 'localhost', '127.0.0.1'];
@@ -1173,9 +1174,15 @@
         }) : null);
         const db = app ? getFirestore(app) : null;
         const rtdb = app ? getDatabase(app, "https://bwzer-game-default-rtdb.asia-southeast1.firebasedatabase.app") : null;
+        // Anonymous sign-in: security rules require auth, and players are identified by auth uid.
+        // Session persistence gives each tab its own identity (kept across reloads of that tab).
+        const fbAuth = app ? initializeAuth(app, { persistence: browserSessionPersistence }) : null;
+        let myUid = '';
+        const authReady = fbAuth
+            ? signInAnonymously(fbAuth).then(c => { myUid = c.user.uid; return true; }).catch(e => { denyFirebase('Sign-in failed: ' + ((e && e.message) || e)); return false; })
+            : Promise.resolve(false);
 
         const $ = id => document.getElementById(id);
-        const myUid = (crypto.randomUUID && crypto.randomUUID()) || ('u' + Math.random().toString(36).slice(2));
         let myName = '', lobbyCode = '', isHost = false, spawnMode = false;
         let aiRunning = false;
         let aiCount = 1, started = false, myReady = false;
@@ -1186,7 +1193,7 @@
         let gameStartTs = 0, resultsPosted = false, results = null, migrating = false;
 
         function status(el, msg, err) { el.textContent = msg; el.className = 'status ' + (err ? 'err' : 'ok'); }
-        function rtErr(e) { const s = (e && e.message) || String(e); return /permission/i.test(s) ? s + ' (check RTDB Rules -> test mode)' : s; }
+        function rtErr(e) { const s = (e && e.message) || String(e); return /permission/i.test(s) ? 'permission denied' : s; }
         function show(id) { $(id).classList.remove('hidden'); }
         function hide(id) { $(id).classList.add('hidden'); }
         function updateControls() {
@@ -1206,15 +1213,15 @@
         // ---- solo Firestore save/load ----
         function fbStatus(msg, err) { const el = $('fbStatus'); if (el) { el.textContent = msg; el.className = 'fb-status' + (err ? ' err' : ''); } }
         async function saveGrid(name) {
-            if (!db) { fbStatus('Firebase is blocked on this domain', true); return; }
+            if (!db || !(await authReady)) { fbStatus('Firebase is unavailable', true); return; }
             try {
                 const n = String(name || '').trim().slice(0, 60); const m = window.G.getMaze();
                 if (!validMaze(m)) { fbStatus('Invalid maze — cannot save', true); return; }
-                await addDoc(collection(db, "grids"), { name: n, size: m.size, grid: m.grid, keyTargets: m.keyTargets, savedAt: new Date() }); fbStatus('Saved: ' + n);
+                await addDoc(collection(db, "grids"), { name: n, size: m.size, grid: m.grid, keyTargets: m.keyTargets || {}, savedAt: serverTimestamp(), ownerUid: myUid }); fbStatus('Saved: ' + n);
             } catch (e) { fbStatus('Save failed: ' + e.message, true); }
         }
         async function loadGrid(name) {
-            if (!db) { fbStatus('Firebase is blocked on this domain', true); return; }
+            if (!db || !(await authReady)) { fbStatus('Firebase is unavailable', true); return; }
             try {
                 const snap = await getDocs(collection(db, "grids")); let found = null;
                 snap.forEach(d => { if (d.data().name === name) found = d.data(); });
@@ -1229,23 +1236,26 @@
         function newCode() { const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < 4; i++) s += c[Math.floor(Math.random() * c.length)]; return s; }
 
         async function hostLobby(name) {
-            if (!rtdb) { status($('mpStatus'), 'Firebase is blocked on this domain', true); return; }
+            if (!rtdb || !(await authReady)) { status($('mpStatus'), 'Firebase is unavailable', true); return; }
             try {
                 const code = newCode(); lobbyCode = code; isHost = true;
                 lobbyPw = ($('hostPw').value || '').trim().slice(0, 20);
                 const m = window.G.getMaze();
                 if (!validMaze(m)) { status($('mpStatus'), 'Invalid maze — cannot host', true); return; }
-                const lobbyData = { hostName: String(name).slice(0, 16), hostUid: myUid, gridSize: m.size, grid: m.grid, keyTargets: m.keyTargets || {}, status: 'lobby', objective: '', maxPlayers: (parseInt($('mpMaxPlayers').value, 10) || 4), createdAt: Date.now(), hb: Date.now() };
-                if (lobbyPw) lobbyData.pw = lobbyPw;
-                await set(ref(rtdb, 'lobbies/' + code), lobbyData);
+                const lobbyData = { hostName: String(name).slice(0, 16), hostUid: myUid, gridSize: m.size, grid: m.grid, keyTargets: m.keyTargets || {}, status: 'lobby', objective: '', private: !!lobbyPw, maxPlayers: (parseInt($('mpMaxPlayers').value, 10) || 4), createdAt: Date.now(), hb: Date.now() };
+                // The password lives under lobbySecrets/, which no client can read; joiners prove it via the rules.
+                const writes = { ['lobbies/' + code]: lobbyData };
+                if (lobbyPw) writes['lobbySecrets/' + code] = { pw: lobbyPw };
+                await update(ref(rtdb), writes);
                 await set(ref(rtdb, 'lobbies/' + code + '/players/' + myUid), { name: String(name).slice(0, 16), isHost: true, role: 'lobby', spawn: [0, 0], connected: true, emoji: $('mpEmoji').value, colorIdx: parseInt($('mpColor').value, 10) || 0 });
                 onDisconnect(ref(rtdb, 'lobbies/' + code + '/players/' + myUid)).remove();
-                onDisconnect(ref(rtdb, 'lobbies/' + code)).remove();
+                onDisconnect(ref(rtdb)).update({ ['lobbies/' + code]: null, ['lobbySecrets/' + code]: null });
                 enterLobby(code, name, true);
             } catch (e) { status($('mpStatus'), 'Host failed: ' + rtErr(e), true); }
         }
 
         async function joinLobby(code, name) {
+            if (!rtdb || !(await authReady)) { status($('mpStatus'), 'Firebase is unavailable', true); return; }
             try {
                 const snap = await get(ref(rtdb, 'lobbies/' + code));
                 if (!snap.exists()) { status($('mpStatus'), 'Lobby not found', true); return; }
@@ -1253,13 +1263,17 @@
                 if (!lobby.hb || Date.now() - lobby.hb > 15000) { status($('mpStatus'), 'Host offline, lobby is gone', true); return; }
                 if (lobby.hostUid && lobby.players && !lobby.players[lobby.hostUid]) { status($('mpStatus'), 'Host left', true); return; }
                 const pw = ($('joinPw').value || '').trim();
-                if (lobby.pw && lobby.pw !== pw) { status($('mpStatus'), 'Wrong password', true); return; }
+                if (lobby.private && !pw) { status($('mpStatus'), 'Password required', true); return; }
                 if (lobby.status === 'playing') { status($('mpStatus'), 'Game already started', true); return; }
                 const players = lobby.players || {};
                 if (Object.keys(players).length >= (lobby.maxPlayers || 4)) { status($('mpStatus'), 'Lobby full', true); return; }
                 for (const uid in players) if (players[uid].name === name) { status($('mpStatus'), 'Name already taken', true); return; }
+                // Player entry and password proof are written together; the rules reject the join if the password is wrong.
+                const writes = { ['lobbies/' + code + '/players/' + myUid]: { name, isHost: false, role: 'lobby', spawn: [0, 0], connected: true, emoji: $('mpEmoji').value, colorIdx: parseInt($('mpColor').value, 10) || 0 } };
+                if (lobby.private) writes['lobbySecrets/' + code + '/joins/' + myUid] = pw;
+                try { await update(ref(rtdb), writes); }
+                catch (e) { status($('mpStatus'), (lobby.private && /permission/i.test((e && e.message) || '')) ? 'Wrong password' : 'Join failed: ' + rtErr(e), true); return; }
                 lobbyCode = code; isHost = false;
-                await set(ref(rtdb, 'lobbies/' + code + '/players/' + myUid), { name, isHost: false, role: 'lobby', spawn: [0, 0], connected: true, emoji: $('mpEmoji').value, colorIdx: parseInt($('mpColor').value, 10) || 0 });
                 onDisconnect(ref(rtdb, 'lobbies/' + code + '/players/' + myUid)).remove();
                 enterLobby(code, name, false);
             } catch (e) { status($('mpStatus'), 'Join failed: ' + rtErr(e), true); }
@@ -1425,7 +1439,7 @@
 
         function leaveLobby(kicked) {
             if (lobbyCode && myUid) remove(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid)).catch(() => {});
-            if (isHost && lobbyCode) remove(ref(rtdb, 'lobbies/' + lobbyCode)).catch(() => {});
+            if (isHost && lobbyCode) update(ref(rtdb), { ['lobbies/' + lobbyCode]: null, ['lobbySecrets/' + lobbyCode]: null }).catch(() => {});
             lobbyCode = ''; isHost = false; aiRunning = false; window.G.setMPAgents({}); started = false; myReady = false; playing = false; myRole = 'lobby'; lobbyPw = '';
             window.G.clearRemote(); window.G.clearAI(); window.G.setGameMode(null); window.G.setLobbyPhase(null);
             hide('lobbyScreen'); show('mpSetup'); $('chatBox').innerHTML = '';
@@ -1438,7 +1452,7 @@
             openDoor(x, y) { if (!lobbyCode || !rtdb) return; x = clampGrid(x); y = clampGrid(y); set(ref(rtdb, 'lobbies/' + lobbyCode + '/doorsOpen/' + x + ',' + y), true).catch(() => {}); },
             pushMaze() { pushMazeThrottled(); },
             updatePos(pos) { if (!lobbyCode) return; updatePosThrottled(pos); },
-            chat(text) { if (!lobbyCode || !rtdb || !text) return; const t = String(text).slice(0, 256); if (!t.trim()) return; push(ref(rtdb, 'lobbies/' + lobbyCode + '/chat'), { name: myName, text: t, ts: Date.now() }).catch(() => {}); },
+            chat(text) { if (!lobbyCode || !rtdb || !text) return; const t = String(text).slice(0, 256); if (!t.trim()) return; push(ref(rtdb, 'lobbies/' + lobbyCode + '/chat'), { uid: myUid, name: myName, text: t, ts: Date.now() }).catch(() => {}); },
             finish() {
                 if (!lobbyCode || !myUid) return;
                 set(ref(rtdb, 'lobbies/' + lobbyCode + '/players/' + myUid + '/finished'), true).catch(() => {});
@@ -1518,7 +1532,7 @@
                 $('hostBtn').onclick = async () => { const n = $('mpName').value.trim(); if (!n) { status($('mpStatus'), 'Enter a name', true); return; } myName = n; await hostLobby(n); };
                 $('joinBtn').onclick = async () => { const n = $('mpName').value.trim(), c = $('joinCode').value.trim().toUpperCase(); if (!n) { status($('mpStatus'), 'Enter a name', true); return; } if (!c) { status($('mpStatus'), 'Enter a lobby code', true); return; } myName = n; await joinLobby(c, n); };
 
-                onValue(ref(rtdb, 'lobbies'), (snap) => {
+                authReady.then(ok => { if (ok) onValue(ref(rtdb, 'lobbies'), (snap) => {
                     const list = $('lobbyList'); list.innerHTML = '';
                     const d = snap.val() || {}; let any = false;
                     for (const code in d) {
@@ -1528,12 +1542,12 @@
                         const cnt = l.players ? Object.keys(l.players).length : 0; if (cnt >= (l.maxPlayers || 4)) continue;
                         any = true;
                         const item = document.createElement('div'); item.className = 'lobby-item';
-                        item.textContent = code + ' - ' + l.hostName + (l.pw ? ' [private]' : '') + ' (' + cnt + '/' + (l.maxPlayers || 4) + ')';
-                        item.onclick = () => { $('joinCode').value = code; if (l.pw) $('joinPw').focus(); };
+                        item.textContent = code + ' - ' + l.hostName + (l.private ? ' [private]' : '') + ' (' + cnt + '/' + (l.maxPlayers || 4) + ')';
+                        item.onclick = () => { $('joinCode').value = code; if (l.private) $('joinPw').focus(); };
                         list.appendChild(item);
                     }
                     if (!any) list.innerHTML = '<div style="color:#b8a8cc">No open lobbies</div>';
-                });
+                }); });
 
                 const sendChat = () => { const t = $('chatInput').value.trim(); if (!t) return; window.NET.chat(t); $('chatInput').value = ''; };
                 $('chatSend').onclick = sendChat;

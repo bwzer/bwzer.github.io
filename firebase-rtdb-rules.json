@@ -1,114 +1,156 @@
 {
   "rules": {
+    ".read": false,
+    ".write": false,
     "lobbies": {
-      ".read": true,
+      ".read": "auth != null",
       "$code": {
-        ".read": true,
-        ".write": true,
+        ".write": "auth != null && ((!data.exists() && newData.child('hostUid').val() === auth.uid) || (data.exists() && data.child('hostUid').val() === auth.uid))",
+        ".validate": "$code.matches(/^[A-Z2-9]{4}$/) && newData.hasChildren(['hostUid', 'hostName', 'status', 'gridSize', 'grid', 'createdAt'])",
         "hostName": {
-          ".validate": "(newData.isString() && newData.val().length > 0 && newData.val().length <= 16) || !newData.exists()"
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 16"
         },
         "hostUid": {
-          ".validate": "(newData.isString() && newData.val().length <= 100) || !newData.exists()"
+          ".write": "auth != null && newData.val() === auth.uid && root.child('lobbies').child($code).child('players').child(auth.uid).exists() && !root.child('lobbies').child($code).child('players').child(data.val()).exists()",
+          ".validate": "newData.isString() && newData.val().length <= 128"
         },
         "gridSize": {
-          ".validate": "(newData.isNumber() && newData.val() >= 3 && newData.val() <= 150) || !newData.exists()"
+          ".write": "auth != null && root.child('lobbies').child($code).child('players').child(auth.uid).child('canEdit').val() === true",
+          ".validate": "newData.isNumber() && newData.val() >= 3 && newData.val() <= 150"
         },
         "grid": {
-          ".validate": "(newData.hasChildren(['0']) && newData.child('0').isNumber()) || !newData.exists()"
+          ".write": "auth != null && root.child('lobbies').child($code).child('players').child(auth.uid).child('canEdit').val() === true",
+          ".validate": "newData.hasChildren(['0'])",
+          "$i": {
+            ".validate": "$i.matches(/^[0-9]{1,5}$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 12"
+          }
         },
         "keyTargets": {
-          ".validate": "(newData.hasChildren()) || !newData.exists()"
+          ".write": "auth != null && root.child('lobbies').child($code).child('players').child(auth.uid).child('canEdit').val() === true",
+          "$cell": {
+            ".validate": "$cell.matches(/^[0-9]{1,3},[0-9]{1,3}$/) && newData.hasChildren(['0', '1'])",
+            "0": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 150" },
+            "1": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 150" },
+            "$other": { ".validate": false }
+          }
         },
         "objective": {
-          ".validate": "(newData.isString() && newData.val().length <= 200) || !newData.exists()"
+          ".validate": "newData.isString() && newData.val().length <= 200"
         },
         "status": {
-          ".validate": "(newData.isString() && (newData.val() === 'lobby' || newData.val() === 'playing')) || !newData.exists()"
+          ".validate": "newData.isString() && (newData.val() === 'lobby' || newData.val() === 'playing')"
         },
-        "pw": {
-          ".validate": "(newData.isString() && newData.val().length <= 20) || !newData.exists()"
+        "private": {
+          ".validate": "newData.isBoolean()"
+        },
+        "maxPlayers": {
+          ".validate": "newData.isNumber() && newData.val() >= 2 && newData.val() <= 6"
         },
         "createdAt": {
-          ".validate": "(newData.isNumber()) || !newData.exists()"
+          ".validate": "newData.isNumber()"
         },
         "startTs": {
-          ".validate": "(newData.isNumber()) || !newData.exists()"
+          ".validate": "newData.isNumber()"
         },
         "hb": {
-          ".validate": "(newData.isNumber()) || !newData.exists()"
+          ".validate": "newData.isNumber()"
         },
         "keysTaken": {
-          "$key": {
-            ".validate": "newData.isBoolean() || !newData.exists()"
+          "$cell": {
+            ".write": "auth != null && root.child('lobbies').child($code).child('players').child(auth.uid).exists()",
+            ".validate": "$cell.matches(/^[0-9]{1,3},[0-9]{1,3}$/) && newData.isBoolean()"
           }
         },
         "doorsOpen": {
-          "$key": {
-            ".validate": "newData.isBoolean() || !newData.exists()"
+          "$cell": {
+            ".write": "auth != null && root.child('lobbies').child($code).child('players').child(auth.uid).exists()",
+            ".validate": "$cell.matches(/^[0-9]{1,3},[0-9]{1,3}$/) && newData.isBoolean()"
           }
         },
         "ai": {
           "$index": {
-            "x": {
-              ".validate": "(newData.isNumber()) || !newData.exists()"
-            },
-            "y": {
-              ".validate": "(newData.isNumber()) || !newData.exists()"
-            },
-            "name": {
-              ".validate": "(newData.isString() && newData.val().length <= 16) || !newData.exists()"
-            },
-            "method": {
-              ".validate": "(newData.isString() && newData.val().length <= 24) || !newData.exists()"
-            }
+            ".validate": "$index.matches(/^[0-9]$/) && newData.hasChildren(['x', 'y'])",
+            "x": { ".validate": "newData.isNumber()" },
+            "y": { ".validate": "newData.isNumber()" },
+            "name": { ".validate": "newData.isString() && newData.val().length <= 16" },
+            "method": { ".validate": "newData.isString() && newData.val().length <= 24" },
+            "$other": { ".validate": false }
+          }
+        },
+        "results": {
+          "$i": {
+            ".validate": "$i.matches(/^[0-9]{1,2}$/) && newData.hasChildren(['name', 'time'])",
+            "name": { ".validate": "newData.isString() && newData.val().length <= 16" },
+            "emoji": { ".validate": "newData.isString() && newData.val().length <= 16" },
+            "colorIdx": { ".validate": "newData.isNumber()" },
+            "time": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "$other": { ".validate": false }
           }
         },
         "players": {
           "$uid": {
-            ".read": true,
-            ".write": true,
-            ".validate": "newData.hasChildren(['name']) || !newData.exists()",
+            ".write": "auth != null && auth.uid === $uid && (data.exists() || (root.child('lobbies').child($code).child('status').val() === 'lobby' && (!root.child('lobbySecrets').child($code).child('pw').exists() || newData.parent().parent().parent().parent().child('lobbySecrets').child($code).child('joins').child($uid).val() === root.child('lobbySecrets').child($code).child('pw').val())))",
+            ".validate": "newData.hasChildren(['name'])",
             "name": {
-              ".validate": "(newData.isString() && newData.val().length > 0 && newData.val().length <= 16) || !newData.exists()"
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 16"
             },
             "isHost": {
-              ".validate": "(newData.isBoolean()) || !newData.exists()"
-            },
-            "role": {
-              ".validate": "(newData.isString() && (newData.val() === 'lobby' || newData.val() === 'player' || newData.val() === 'spectator')) || !newData.exists()"
-            },
-            "spawn": {
-              ".validate": "(newData.hasChildren(['0', '1']) && newData.child('0').isNumber() && newData.child('1').isNumber()) || !newData.exists()"
-            },
-            "pos": {
-              ".validate": "(newData.hasChildren(['0', '1']) && newData.child('0').isNumber() && newData.child('1').isNumber()) || !newData.exists()"
-            },
-            "ready": {
-              ".validate": "(newData.isBoolean()) || !newData.exists()"
+              ".validate": "newData.isBoolean() && (newData.val() === false || newData.parent().parent().parent().child('hostUid').val() === $uid)"
             },
             "canEdit": {
-              ".validate": "(newData.isBoolean()) || !newData.exists()"
+              ".validate": "newData.isBoolean() && (newData.val() === false || root.child('lobbies').child($code).child('hostUid').val() === auth.uid)"
             },
-            "connected": {
-              ".validate": "(newData.isBoolean()) || !newData.exists()"
-            }
+            "role": {
+              ".validate": "newData.isString() && (newData.val() === 'lobby' || newData.val() === 'player' || newData.val() === 'spectator')"
+            },
+            "spawn": {
+              ".validate": "newData.hasChildren(['0', '1'])",
+              "0": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 150" },
+              "1": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 150" },
+              "$other": { ".validate": false }
+            },
+            "pos": {
+              ".validate": "newData.hasChildren(['0', '1'])",
+              "0": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 150" },
+              "1": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 150" },
+              "$other": { ".validate": false }
+            },
+            "ready": { ".validate": "newData.isBoolean()" },
+            "connected": { ".validate": "newData.isBoolean()" },
+            "finished": { ".validate": "newData.isBoolean()" },
+            "finishAt": { ".validate": "newData.isNumber()" },
+            "emoji": { ".validate": "newData.isString() && newData.val().length <= 16" },
+            "colorIdx": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 5" },
+            "$other": { ".validate": false }
           }
         },
         "chat": {
           "$msgId": {
-            ".validate": "newData.hasChildren(['name', 'text', 'ts']) || !newData.exists()",
-            "name": {
-              ".validate": "(newData.isString() && newData.val().length <= 16) || !newData.exists()"
-            },
-            "text": {
-              ".validate": "(newData.isString() && newData.val().length > 0 && newData.val().length <= 256) || !newData.exists()"
-            },
-            "ts": {
-              ".validate": "(newData.isNumber()) || !newData.exists()"
-            }
+            ".write": "auth != null && !data.exists() && root.child('lobbies').child($code).child('players').child(auth.uid).exists()",
+            ".validate": "newData.hasChildren(['uid', 'name', 'text', 'ts'])",
+            "uid": { ".validate": "newData.val() === auth.uid" },
+            "name": { ".validate": "newData.isString() && newData.val().length <= 16" },
+            "text": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 256" },
+            "ts": { ".validate": "newData.isNumber()" },
+            "$other": { ".validate": false }
           }
-        }
+        },
+        "$other": { ".validate": false }
+      }
+    },
+    "lobbySecrets": {
+      "$code": {
+        ".write": "auth != null && (root.child('lobbies').child($code).child('hostUid').val() === auth.uid || newData.parent().parent().child('lobbies').child($code).child('hostUid').val() === auth.uid)",
+        "pw": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 20"
+        },
+        "joins": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid",
+            ".validate": "newData.isString() && newData.val() === root.child('lobbySecrets').child($code).child('pw').val()"
+          }
+        },
+        "$other": { ".validate": false }
       }
     }
   }
